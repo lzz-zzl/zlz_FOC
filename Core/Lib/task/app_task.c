@@ -8,6 +8,7 @@
 #include "Serial.h"
 #include "FOC_2.h"
 #include "main.h"
+#include "check_I.h"
 // #include "MT6816.h"
 
 extern int16_t Uq, Ud;
@@ -83,7 +84,7 @@ void OLED_Task(void *argument) {
     OLED_Init();
     for (;;) {
         extern uint16_t FOC_count;
-        OLED_ShowNum(1,1,FOC_count, 5);
+    OLED_ShowNum(1,1,FOC_count, 5);
         Task_OLED_Update();
         osDelay(100);  // 延时 50ms
 
@@ -96,9 +97,40 @@ void FOC_Task(void *argument) {
         FOC_error_handle_task();
         osDelay(50);
 
-        HAL_GPIO_WritePin(GPIOB, GPIO_PIN_2, GPIO_PIN_SET);
-        osDelay(200);
-        HAL_GPIO_WritePin(GPIOB, GPIO_PIN_2, GPIO_PIN_RESET);
+        // HAL_GPIO_WritePin(GPIOB, GPIO_PIN_2, GPIO_PIN_SET);
+        // osDelay(200);
+        // HAL_GPIO_WritePin(GPIOB, GPIO_PIN_2, GPIO_PIN_RESET);
+        // osDelay(100);
+    }
+}
+
+/* ======================== ADC 电流检测测试任务 ======================== */
+
+void ADC_Test_Task(void *argument)
+{
+    /* 等待 DMA 稳定 */
+    osDelay(20);
+
+    for (;;)
+    {
+        int16_t m1a = I_Check_Get_M1_A();
+        int16_t m1b = I_Check_Get_M1_B();
+        int16_t m2a = I_Check_Get_M2_A();
+        int16_t m2b = I_Check_Get_M2_B();
+
+        /* OLED 第四行显示 M1_A / M1_B */
+        OLED_ShowSignedNum(4, 1, m1a, 5);
+        OLED_ShowSignedNum(4, 8, m1b, 5);
+
+        /* 串口输出, 每 10 次发一次 */
+        static uint8_t cnt = 0;
+        cnt++;
+        if (cnt >= 10) {
+            cnt = 0;
+            Serial_Printf("[adc,M1A=%d,M1B=%d,M2A=%d,M2B=%d]\r\n",
+                          m1a, m1b, m2a, m2b);
+        }
+
         osDelay(100);
     }
 }
@@ -128,5 +160,13 @@ void App_Task_Create(void) {
         .priority = (osPriority_t) 41,
     };
     osThreadId_t FOC_taskHandle = osThreadNew(FOC_Task, NULL, &FOC_task_attributes);
+
+    /* ADC 测试任务 */
+    const osThreadAttr_t adc_test_attributes = {
+        .name = "ADC_Test",
+        .stack_size = 256 * 4,
+        .priority = (osPriority_t) 30,
+    };
+    osThreadNew(ADC_Test_Task, NULL, &adc_test_attributes);
 
 }

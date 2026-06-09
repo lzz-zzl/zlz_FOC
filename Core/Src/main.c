@@ -20,6 +20,7 @@
 #include "main.h"
 #include "cmsis_os.h"
 #include "adc.h"
+#include "dma.h"
 #include "i2c.h"
 #include "spi.h"
 #include "tim.h"
@@ -33,6 +34,7 @@
 #include "FOC_1.h"
 #include "Serial.h"
 #include "app_task.h"
+#include "check_I.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -88,9 +90,15 @@ void HAL_ADC_ConvHalfCpltCallback(ADC_HandleTypeDef* hadc)
 {
   if(hadc->Instance == ADC1)
   {
-    for (uint8_t i = 0; i < 4; i++) {
-      MyADC_Get_used[i] = MyADC_Get[i];
-    }
+    I_Check_HalfCplt_Handler();
+  }
+}
+
+void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc)
+{
+  if(hadc->Instance == ADC1)
+  {
+    I_Check_Cplt_Handler();
   }
 }
 
@@ -128,6 +136,7 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
+  MX_DMA_Init();
   MX_I2C1_Init();
   MX_I2C3_Init();
   MX_SPI1_Init();
@@ -147,7 +156,10 @@ int main(void)
   // HAL_ADC_Start(&hadc1);
   HAL_TIM_Base_Start_IT(&htim10);
   HAL_TIM_Base_Start_IT(&htim2);
-  HAL_TIM_Base_Start_IT(&htim3);
+  HAL_TIM_Base_Start_IT(&htim5);
+
+  I_Check_Init();
+  I_Check_Start();
 
   // MT6816_Init();
   Serial_Init();
@@ -167,8 +179,10 @@ int main(void)
   /* Init scheduler */
   osKernelInitialize();  /* Call init function for freertos objects (in cmsis_os2.c) */
   MX_FREERTOS_Init();
+
   /* Start scheduler */
   osKernelStart();
+
   /* We should never get here as control is now taken by the scheduler */
 
   /* Infinite loop */
@@ -242,7 +256,7 @@ void SystemClock_Config(void)
 
 /**
   * @brief  Period elapsed callback in non blocking mode
-  * @note   This function is called  when TIM6 interrupt took place, inside
+  * @note   This function is called  when TIM7 interrupt took place, inside
   * HAL_TIM_IRQHandler(). It makes a direct call to HAL_IncTick() to increment
   * a global variable "uwTick" used as application time base.
   * @param  htim : TIM handle
@@ -285,7 +299,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 
   }
   //15kHz电机控制周期
-  if (htim->Instance == TIM3) {
+  if (htim->Instance == TIM5) {
     static uint16_t tim3_count =0;
     tim3_count++;
     if (tim3_count > 15000) {
@@ -297,7 +311,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 
 
   /* USER CODE END Callback 0 */
-  if (htim->Instance == TIM6)
+  if (htim->Instance == TIM7)
   {
     HAL_IncTick();
   }
