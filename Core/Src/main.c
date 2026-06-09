@@ -80,6 +80,7 @@ uint16_t test3 =0;
 uint16_t test_serial =0;
 uint16_t count_vl = 0;
 uint16_t Count;
+uint16_t FOC_count =0;
 
 float GZ;
 
@@ -156,6 +157,8 @@ int main(void)
 
   //test//  test
 
+  App_Task_Create();
+
 
 
 
@@ -164,7 +167,6 @@ int main(void)
   /* Init scheduler */
   osKernelInitialize();  /* Call init function for freertos objects (in cmsis_os2.c) */
   MX_FREERTOS_Init();
-  App_Task_Create();
   /* Start scheduler */
   osKernelStart();
   /* We should never get here as control is now taken by the scheduler */
@@ -284,8 +286,12 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
   }
   //15kHz电机控制周期
   if (htim->Instance == TIM3) {
-    static uint16_t count =0;
-    count++;
+    static uint16_t tim3_count =0;
+    tim3_count++;
+    if (tim3_count > 15000) {
+      FOC_count++;
+      tim3_count = 0;
+    }
     // FOC_period();
   }
 

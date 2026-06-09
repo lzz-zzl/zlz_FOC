@@ -7,6 +7,7 @@
 #include "OLED.h"
 #include "Serial.h"
 #include "FOC_2.h"
+#include "main.h"
 // #include "MT6816.h"
 
 extern int16_t Uq, Ud;
@@ -81,6 +82,8 @@ void Serial_Task(void *argument) {
 void OLED_Task(void *argument) {
     OLED_Init();
     for (;;) {
+        extern uint16_t FOC_count;
+        OLED_ShowNum(1,1,FOC_count, 5);
         Task_OLED_Update();
         osDelay(100);  // 延时 50ms
 
