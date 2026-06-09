@@ -164,10 +164,9 @@ int main(void)
   /* Init scheduler */
   osKernelInitialize();  /* Call init function for freertos objects (in cmsis_os2.c) */
   MX_FREERTOS_Init();
-
+  App_Task_Create();
   /* Start scheduler */
   osKernelStart();
-
   /* We should never get here as control is now taken by the scheduler */
 
   /* Infinite loop */
@@ -261,21 +260,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 
 
 
-    if (HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_12) == GPIO_PIN_SET && B1_static == 0) {
-      bottom-=1;
-      Count = 0;
-      B1_static = 1;
-    }
-    if (HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_12) == GPIO_PIN_RESET && B1_static == 1) {
-      B1_static = 0;
-    }
-    if (HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_13) == GPIO_PIN_SET && B2_static == 0) {
-      bottom+=1;
-      B2_static = 1;
-    }
-    if (HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_13) == GPIO_PIN_RESET && B2_static == 1) {
-      B2_static = 0;
-    }
+
   }
   //1000Hz
   if (htim->Instance == TIM10) {
@@ -301,7 +286,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
   if (htim->Instance == TIM3) {
     static uint16_t count =0;
     count++;
-    FOC_period();
+    // FOC_period();
   }
 
 
