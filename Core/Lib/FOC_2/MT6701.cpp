@@ -156,6 +156,7 @@ int16_t MT6701::refresh_adaptive(float max_diff, uint8_t max_dif_count) {
         m_angle_14bit = raw;
     }
 
+
     m_last_angle_14bit = m_angle_14bit;
     return m_angle_14bit;
 }
