@@ -8,8 +8,10 @@
 #include "Serial.h"
 #include "FOC_2.h"
 #include "main.h"
-#include "check_I.h"
+// #include "check_I.h"
 // #include "MT6816.h"
+#include "MT6701.h"
+#include "spi.h"
 
 extern int16_t Uq, Ud;
 extern float FOC_speed;
@@ -104,31 +106,51 @@ void FOC_Task(void *argument) {
     }
 }
 
-/* ======================== ADC 电流检测测试任务 ======================== */
+/* ======================== MT6701 编码器测试任务 ======================== */
 
-void ADC_Test_Task(void *argument)
+/**
+  * @brief  MT6701 编码器测试.
+  *         读取角度并显示到 OLED 第四行,
+  *         串口每 1s 输出一次角度值.
+  *
+  * ⚠️ MT6701 的 SPI 必须配为 Mode 2 (CPOL=High, CPHA=1Edge)
+  *
+  * 接线:
+  *   SPI2_SCK  (PB10) → MT6701 CLK
+  *   SPI2_MISO (PC2)  → MT6701 DO
+  *   PB11 (GPIO)      → MT6701 CSN
+  */
+void MT6701_Test_Task(void *argument)
 {
-    /* 等待 DMA 稳定 */
-    osDelay(20);
+    /* 等待外设稳定 */
+    osDelay(10);
+
+    /* 创建 MT6701 全局实例: SPI2, CS=PB11 */
+    MT6701_Create(&hspi2, GPIOB, GPIO_PIN_11);
+
+    /* 先空读一次, 让传感器稳定 */
+    MT6701_Refresh();
+    osDelay(5);
 
     for (;;)
     {
-        int16_t m1a = I_Check_Get_M1_A();
-        int16_t m1b = I_Check_Get_M1_B();
-        int16_t m2a = I_Check_Get_M2_A();
-        int16_t m2b = I_Check_Get_M2_B();
+        MT6701_Refresh();
+        int16_t raw   = MT6701_GetAngle();
+        float   deg   = MT6701_GetDeg();
+        int32_t turns = MT6701_GetTurns();
 
-        /* OLED 第四行显示 M1_A / M1_B */
-        OLED_ShowSignedNum(4, 1, m1a, 5);
-        OLED_ShowSignedNum(4, 8, m1b, 5);
+        /* OLED 第四行显示角度 */
+        OLED_ShowNum(4, 1, raw, 5);           /* 14-bit 原始值 */
+        OLED_ShowNum(4, 7, (uint16_t)deg, 3); /* 0~360 度 */
+        OLED_ShowSignedNum(4, 11, (int16_t)(deg * 10.0f) % 10, 2); /* 小数位 */
 
-        /* 串口输出, 每 10 次发一次 */
+        /* 串口每 10 次输出一次 */
         static uint8_t cnt = 0;
         cnt++;
         if (cnt >= 10) {
             cnt = 0;
-            Serial_Printf("[adc,M1A=%d,M1B=%d,M2A=%d,M2B=%d]\r\n",
-                          m1a, m1b, m2a, m2b);
+            Serial_Printf("[mt6701,raw=%d,deg=%.1f,turns=%ld]\r\n",
+                          raw, deg, turns);
         }
 
         osDelay(100);
@@ -161,12 +183,12 @@ void App_Task_Create(void) {
     };
     osThreadId_t FOC_taskHandle = osThreadNew(FOC_Task, NULL, &FOC_task_attributes);
 
-    /* ADC 测试任务 */
-    const osThreadAttr_t adc_test_attributes = {
-        .name = "ADC_Test",
+    /* MT6701 编码器测试任务 */
+    const osThreadAttr_t mt6701_test_attributes = {
+        .name = "MT6701_Test",
         .stack_size = 256 * 4,
         .priority = (osPriority_t) 30,
     };
-    osThreadNew(ADC_Test_Task, NULL, &adc_test_attributes);
+    osThreadNew(MT6701_Test_Task, NULL, &mt6701_test_attributes);
 
 }

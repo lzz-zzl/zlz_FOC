@@ -1,15 +1,50 @@
 //
 // Created by zhang on 2026/6/9.
 //
+// MT6701 磁编码器 — SSI 通信.
+//
+// SSI 协议 (25 bit 帧):
+//   START(1) + 14-bit angle + 4-bit status + 6-bit CRC = 25 bits total
+//   使用 16-bit SPI 读取, 提取角度: (rx >> 2) & 0x3FFF
+//
+// ⚠️ SPI 必须配置为 Mode 2 (CPOL=1, CPHA=0):
+//    CubeMX → SPI → Parameter Settings:
+//      Clock Polarity (CPOL)  = High
+//      Clock Phase (CPHA)    = 1 Edge
+//
 
 #ifndef ITCAP_STM_MT6701_H
 #define ITCAP_STM_MT6701_H
 
 #include "stm32f4xx_hal.h"
+#include <stdint.h>
+
+/* ========================================================================== */
+/*               extern "C" 兼容层 (C / C++ 均可调用)                         */
+/* ========================================================================== */
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+void    MT6701_Create(SPI_HandleTypeDef *hspi, GPIO_TypeDef *cs_port, uint16_t cs_pin);
+void    MT6701_Refresh(void);
+int16_t MT6701_GetAngle(void);
+float   MT6701_GetDeg(void);
+int32_t MT6701_GetTurns(void);
+
+#ifdef __cplusplus
+}
+#endif
+
+/* ========================================================================== */
+/*               C++ 类 (仅 C++ 可见)                                         */
+/* ========================================================================== */
+
+#ifdef __cplusplus
 
 class MT6701 {
 public:
-    /* ---------- SPI / CS 引脚参数 ---------- */
     struct Config {
         SPI_HandleTypeDef *hspi;
         GPIO_TypeDef       *cs_port;
@@ -18,49 +53,44 @@ public:
 
     explicit MT6701(const Config &cfg);
 
-    /* ---------- 原始 SSI 读取 ---------- */
     int16_t read_raw_angle();
 
-    /* ---------- 带滤波的角度刷新（返回 12bit 角度） ---------- */
-    int16_t refresh_raw();                         // 直接返回
-    int16_t refresh_low_pass(float alpha = 0.05f);  // alpha 越小滤波越强
+    int16_t refresh_raw();
+    int16_t refresh_low_pass(float alpha = 0.05f);
     int16_t refresh_adaptive(float max_diff = 5.0f, uint8_t max_dif_count = 12);
     int16_t refresh_rate_limit(float max_diff = 5.0f);
 
-    /* ---------- 角度值 ---------- */
-    float   get_angle_deg()      const;  // 0~360 度
-    int16_t get_angle_12bit()    const;  // 0~4095
+    float   get_angle_deg()      const;
+    int16_t get_angle_14bit()    const;
 
-    /* ---------- 速度 ---------- */
-    float   calc_speed_rpm();     // 通过 HAL_GetTick() 差值计算，单位 RPM
+    float   calc_speed_rpm();
     float   calc_speed_rpm_low_pass(float alpha = 0.1f);
 
-    /* ---------- 圈数 ---------- */
     int32_t get_rotation_count()  const;
-
-    /** DO 位: 1=正常, 0=诊断/错误 */
     uint8_t get_status()          const;
 
-    static constexpr uint16_t RESOLUTION = 4096;  // 12 bit
+    static constexpr uint16_t RESOLUTION = 16384;
 
 private:
     SPI_HandleTypeDef *m_hspi;
     GPIO_TypeDef      *m_cs_port;
     uint16_t           m_cs_pin;
 
-    int16_t  m_angle_12bit;         // 当前角度
-    int16_t  m_last_angle_12bit;    // 上一次角度（用于差速 / 圈数累计）
-    float    m_last_speed_rpm;      // 上一次速度（低通用）
+    int16_t  m_angle_14bit;
+    int16_t  m_last_angle_14bit;
+    float    m_last_speed_rpm;
 
-    int32_t  m_rotation_count;      // 累计圈数
-    uint8_t  m_adaptive_dif_count;  // 自适应滤波异常计数器
+    int32_t  m_rotation_count;
+    uint8_t  m_adaptive_dif_count;
 
-    uint32_t m_last_tick;           // 上一次读取的系统 tick (ms)
-    uint8_t  m_last_diag;           // 上一次 DO (诊断) 状态
+    uint32_t m_last_tick;
+    uint8_t  m_last_diag;
 
     void cs_assert();
     void cs_deassert();
     int16_t ssi_read_angle();
 };
 
-#endif //ITCAP_STM_MT6701_H
+#endif /* __cplusplus */
+
+#endif /* ITCAP_STM_MT6701_H */
