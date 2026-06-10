@@ -113,13 +113,17 @@ int16_t MT6701::ssi_read_angle() {
 
     /* 角度提取:
      *   rx[15]   = START (同步位, 恒为 1)
-     *   rx[14:1] = 14-bit angle
-     *   rx[0]    = 第一个 status/CRC 位
+     *   rx[14:1] = 14-bit angle [13:0]
+     *   rx[0]    = status[3] (第一个 status 位)
      *
-     *   (rx >> 2) 丢弃 rx[1:0], 保留 rx[15:2]
-     *   & 0x3FFF  取低 14 位 (丢弃 START 位)
+     *   (rx >> 1)  将 14-bit angle (rx[14:1]) 移至 bits[13:0]
+     *   & 0x3FFF  保留低 14 位, 丢弃 START (移位后在 bit 14)
+     *
+     *   ⚠️ 保持 8-bit SPI 模式 (SPI_DATASIZE_8BIT):
+     *      HAL_SPI_TransmitReceive(..., 2, ...) = 16 SCK pulses ✅
+     *      16-bit 模式下需改 count=1, 否则 32 SCK pulses 读过头!
      */
-    return (int16_t)((rx >> 2) & 0x3FFF);
+    return (int16_t)((rx >> 1) & 0x3FFF);
 }
 
 int16_t MT6701::read_raw_angle() {
