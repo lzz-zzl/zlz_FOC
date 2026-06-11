@@ -53,11 +53,11 @@ message(STATUS "FOC_1 module DISABLED")
 
 # ---- 选择 app_task 版本（task_v1 = C, task_v2 = C++） ----
 # 取消注释需要的版本，注释掉不需要的
-list(FILTER Lib_SOURCES EXCLUDE REGEX ".*task_v1/.*")
-message(STATUS "task_v1 (C version) DISABLED — using task_v2 (C++ version)")
+#list(FILTER Lib_SOURCES EXCLUDE REGEX ".*task_v1/.*")
+#message(STATUS "task_v1 (C version) DISABLED — using task_v2 (C++ version)")
 
-#list(FILTER Lib_SOURCES EXCLUDE REGEX ".*task_v2/.*")
-#message(STATUS "task_v2 (C++ version) DISABLED — using task_v1 (C version)")
+list(FILTER Lib_SOURCES EXCLUDE REGEX ".*task_v2/.*")
+message(STATUS "task_v2 (C++ version) DISABLED — using task_v1 (C version)")
 
 
 message(STATUS "Found Lib sources: ${Lib_SOURCES}")

@@ -37,11 +37,7 @@ uint8_t Serial_RxFlag2;
 
 void Serial_Init(void)
 {
-	MX_USART1_UART_Init();
-	MX_USART2_UART_Init();
-	/* 使能 USART1 中断 (NVIC) — CubeMX 未生成此项 */
-	HAL_NVIC_SetPriority(USART1_IRQn, 5, 0);
-	HAL_NVIC_EnableIRQ(USART1_IRQn);
+	/* USART1/2 已在 main.c 中由 MX_USARTx_UART_Init() 初始化, 不再重复调用 */
 	HAL_UART_Receive_IT(&huart1, &temp_rxdata1, 1);
 	HAL_UART_Receive_IT(&huart2, &temp_rxdata2, 1);
 	uart_sem = osSemaphoreNew(1, 0, NULL);  // 最大计数1, 初始可用0
