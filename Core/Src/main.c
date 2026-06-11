@@ -162,6 +162,16 @@ int main(void)
   I_Check_Start();
 
   // MT6816_Init();
+  /* V3P 驱动使能 PE8 (DRV8313 共用一个 EN) */
+  __HAL_RCC_GPIOE_CLK_ENABLE();
+  GPIO_InitTypeDef en_gpio = {0};
+  en_gpio.Pin   = GPIO_PIN_8;
+  en_gpio.Mode  = GPIO_MODE_OUTPUT_PP;
+  en_gpio.Pull  = GPIO_NOPULL;
+  en_gpio.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(GPIOE, &en_gpio);
+  HAL_GPIO_WritePin(GPIOE, GPIO_PIN_8, GPIO_PIN_RESET);  // 先禁止使能
+
   Serial_Init();
   // MPU6050_Init();
 
@@ -306,7 +316,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
       FOC_count++;
       tim3_count = 0;
     }
-    // FOC_period();
+    FOC_period();
   }
 
 

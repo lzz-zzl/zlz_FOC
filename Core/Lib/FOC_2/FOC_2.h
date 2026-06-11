@@ -9,12 +9,12 @@
 #include "Control.h"
 
 #ifdef __cplusplus
-#include "MT6816.h"
+#include "MT6701.h"
 
 class FOC_2 {
 public:
     struct Config {
-        MT6816            *encoder;
+        MT6701            *encoder;
         TIM_HandleTypeDef *htim_pwm;        // TIM1
         TIM_HandleTypeDef *htim_ctrl;       // TIM3 (15kHz ISR)
         uint8_t            pole_pairs;      // 极对数
@@ -45,6 +45,9 @@ public:
     void     set_ud(int16_t v);
     int16_t  get_uq() const;
     int16_t  get_ud() const;
+    uint16_t get_ua() const { return m_ua; }
+    uint16_t get_ub() const { return m_ub; }
+    uint16_t get_uc() const { return m_uc; }
 
     /* ---------- 只读访问 ---------- */
     uint16_t get_elect_angle() const;
@@ -60,7 +63,7 @@ public:
     control_PID &direct_location1_pid();
 
     /* ---------- 编码器访问 ---------- */
-    MT6816 *encoder() const { return m_encoder; }
+    MT6701 *encoder() const { return m_encoder; }
 
     /* ---------- C 兼容层需要的 public 方法 ---------- */
     void elect_angle_analog(float rad_s);
@@ -84,7 +87,7 @@ private:
     static inline uint16_t min_three(uint16_t a, uint16_t b, uint16_t c);
 
     /* ---------- 硬件 ---------- */
-    MT6816            *m_encoder;
+    MT6701            *m_encoder;
     TIM_HandleTypeDef *m_htim_pwm;
     TIM_HandleTypeDef *m_htim_ctrl;
     uint8_t            m_pole_pairs;
@@ -133,9 +136,12 @@ private:
     float    m_elect_angle_analog;  // 模拟电角度累加值
 };
 
+
 /* ========== 全局默认实例管理 ========== */
 void        FOC_2_set_default_instance(FOC_2 *inst);
 FOC_2      *FOC_2_get_default_instance();
+
+//
 
 #endif /* __cplusplus */
 
@@ -148,6 +154,7 @@ extern "C" {
 #endif
 
 extern int16_t  FOC_Uq, FOC_Ud;
+extern uint16_t FOC_Ua, FOC_Ub, FOC_Uc;
 extern uint8_t  FOC_state;
 extern int16_t  FOC_location;
 extern int16_t  FOC_location_target;
@@ -170,7 +177,7 @@ void    FOC_SET_location_target(int16_t location);
 int16_t FOC_GET_location_target(void);
 void    FOC_SET_location_limit(int16_t min, int16_t max);
 void    FOC_error_handle(void);
-void    FOC_elect_angle_MT6816(void);
+void    FOC_elect_angle_MT6701(void);
 void    FOC_elect_angle_analog(float rad_s);
 void    FOC_Inv_Part_Clark_Q15(int16_t angle);
 int16_t foc_test(int16_t a);

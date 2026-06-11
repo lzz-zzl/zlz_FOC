@@ -10,6 +10,9 @@
 #include "Control.h"
 #include <math.h>
 
+/* 调试输出 */
+extern "C" void Serial_Printf(char *format, ...);
+
 /* ========================================================================== */
 /*                      常量 & 宏                                              */
 /* ========================================================================== */
@@ -48,6 +51,7 @@ FOC_2 *FOC_2_get_default_instance()             { return g_defaultFOC; }
 
 /* 兼容 FOC_1 的全局变量 — 全部指向默认实例 */
 int16_t  FOC_Uq, FOC_Ud;
+uint16_t FOC_Ua, FOC_Ub, FOC_Uc;
 uint8_t  FOC_state;
 int16_t  FOC_location;
 int16_t  FOC_location_target;
@@ -64,6 +68,9 @@ static inline void sync_globals() {
     if (!g_defaultFOC) return;
     FOC_Uq   = g_defaultFOC->get_uq();
     FOC_Ud   = g_defaultFOC->get_ud();
+    FOC_Ua   = g_defaultFOC->get_ua();
+    FOC_Ub   = g_defaultFOC->get_ub();
+    FOC_Uc   = g_defaultFOC->get_uc();
     FOC_state = g_defaultFOC->get_state();
     FOC_location = g_defaultFOC->get_location();
     FOC_location_target = g_defaultFOC->get_location_target();
@@ -72,6 +79,7 @@ static inline void sync_globals() {
     FOC_location_state = 0;
     Uq = FOC_Uq;                     // 同步 FOC_1 兼容变量
     Ud = FOC_Ud;
+    uint16_t debug_elect_angle = g_defaultFOC->get_elect_angle();
 }
 
 /* ---------- extern "C" 函数实现 ---------- */
@@ -105,21 +113,17 @@ void FOC_SET_location_limit(int16_t lo, int16_t hi) {
     if (g_defaultFOC) g_defaultFOC->set_location_limit(lo, hi);
 }
 void FOC_error_handle(void)      { if (g_defaultFOC) g_defaultFOC->error_handle(); }
-void FOC_elect_angle_MT6816(void){ /* 内部已处理，保留空壳兼容 */ }
+void FOC_elect_angle_MT6701(void){ /* 内部已处理，保留空壳兼容 */ }
 int16_t foc_test(int16_t a)      { return a; }
 
 void FOC_2_create_default(void) {
-    static MT6816 s_encoder({
-        &hspi1,
-        GPIOA,
-        GPIO_PIN_4
-    });
+    static MT6701 s_encoder({&hspi2, GPIOB, GPIO_PIN_11});
 
     /* 注：s_foc 的构造函数会调用 FOC_2_set_default_instance(this) */
     static FOC_2 s_foc({
         &s_encoder,
         &htim1,
-        &htim3,
+        &htim5,       /* 用 TIM5 (15kHz) 做控制周期，TIM3 留给编码器 */
         7,        // pole_pairs
         12.0f,    // u_bus
         7.5f,     // r_wire
@@ -275,9 +279,18 @@ void FOC_2::elect_angle_from_encoder() {
     if (m_location >= m_elect_angle_zero) {
         temp = m_location - m_elect_angle_zero;
     } else {
-        temp = m_location + 16384 - m_elect_angle_zero;
+        temp = m_location + MT6701::RESOLUTION - m_elect_angle_zero;
     }
-    m_elect_angle = (int16_t)((temp * m_pole_pairs * 360 / MT6816::RESOLUTION) % 360);
+    uint32_t numerator = (uint32_t)temp * m_pole_pairs * 360;
+    m_elect_angle = (int16_t)((numerator / (MT6701::RESOLUTION - 1)) % 360);
+    /* 调试: 每 ~500ms 输出中间值 (15kHz ÷ 7500 ≈ 2Hz) */
+    static uint16_t dbg_cnt = 0;
+    dbg_cnt++;
+    if (dbg_cnt >= 7500) {
+        dbg_cnt = 0;
+        Serial_Printf("[elec,loc=%d,zero=%d,temp=%lu,num=%lu,angle=%d]\r\n",
+            m_location, m_elect_angle_zero, temp, numerator, m_elect_angle);
+    }
 }
 
 void FOC_2::elect_angle_analog(float rad_s) {
@@ -476,8 +489,7 @@ void FOC_2::init() {
     m_elect_angle_zero = 11101;
 
     table_init();
-    /* DRV8313_Init() 已由 CubeMX MX_GPIO_Init 完成 — 注意此处若调用
-     * 会把 PB15(EN) 和 PA2(SLEEP) 配成开漏输出,导致无法正常使能 */
+    /* DRV8313_Init() 已由 main.c 中 GPIO 初始化完成 — PE8(EN) 已在 main.c 配好 */
     // DRV8313_Init();
 
     HAL_TIM_PWM_Start(m_htim_pwm, TIM_CHANNEL_1);
@@ -534,4 +546,5 @@ control_PID &FOC_2::location_pid()         { return m_location_pid; }
 control_PID &FOC_2::direct_location0_pid() { return m_direct_location0_pid; }
 control_PID &FOC_2::direct_location1_pid() { return m_direct_location1_pid; }
 
-
+// s_FOC::m_elect_angle g_defaultFOC
+// sync_globals()
