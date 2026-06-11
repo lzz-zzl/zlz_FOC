@@ -22,10 +22,14 @@
 
 /* USER CODE BEGIN 0 */
 
+/* USART1 TX DMA 句柄 (非 static, 供 stm32f4xx_it.c 引用) */
+DMA_HandleTypeDef hdma_usart1_tx;
+
 /* USER CODE END 0 */
 
 UART_HandleTypeDef huart1;
 UART_HandleTypeDef huart2;
+DMA_HandleTypeDef hdma_usart1_tx;
 
 /* USART1 init function */
 
@@ -110,11 +114,55 @@ void HAL_UART_MspInit(UART_HandleTypeDef* uartHandle)
     GPIO_InitStruct.Alternate = GPIO_AF7_USART1;
     HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
+    /* USART1 DMA Init */
+    /* USART1_TX Init */
+    hdma_usart1_tx.Instance = DMA2_Stream7;
+    hdma_usart1_tx.Init.Channel = DMA_CHANNEL_4;
+    hdma_usart1_tx.Init.Direction = DMA_MEMORY_TO_PERIPH;
+    hdma_usart1_tx.Init.PeriphInc = DMA_PINC_DISABLE;
+    hdma_usart1_tx.Init.MemInc = DMA_MINC_ENABLE;
+    hdma_usart1_tx.Init.PeriphDataAlignment = DMA_PDATAALIGN_BYTE;
+    hdma_usart1_tx.Init.MemDataAlignment = DMA_MDATAALIGN_BYTE;
+    hdma_usart1_tx.Init.Mode = DMA_NORMAL;
+    hdma_usart1_tx.Init.Priority = DMA_PRIORITY_LOW;
+    hdma_usart1_tx.Init.FIFOMode = DMA_FIFOMODE_DISABLE;
+    if (HAL_DMA_Init(&hdma_usart1_tx) != HAL_OK)
+    {
+      Error_Handler();
+    }
+
+    __HAL_LINKDMA(uartHandle,hdmatx,hdma_usart1_tx);
+
     /* USART1 interrupt Init */
     HAL_NVIC_SetPriority(USART1_IRQn, 5, 0);
     HAL_NVIC_EnableIRQ(USART1_IRQn);
   /* USER CODE BEGIN USART1_MspInit 1 */
 
+  /* USART1 TX DMA: DMA2 Stream7, Channel4 */
+  /* 必须先启 DMA2 时钟 (如果尚未启用) */
+  __HAL_RCC_DMA2_CLK_ENABLE();
+
+  /* 外设地址固定为 USART1_DR */
+  hdma_usart1_tx.Instance                 = DMA2_Stream7;
+  hdma_usart1_tx.Init.Channel             = DMA_CHANNEL_4;
+  hdma_usart1_tx.Init.Direction           = DMA_MEMORY_TO_PERIPH;
+  hdma_usart1_tx.Init.PeriphInc           = DMA_PINC_DISABLE;
+  hdma_usart1_tx.Init.MemInc              = DMA_MINC_ENABLE;
+  hdma_usart1_tx.Init.PeriphDataAlignment = DMA_PDATAALIGN_BYTE;
+  hdma_usart1_tx.Init.MemDataAlignment    = DMA_MDATAALIGN_BYTE;
+  hdma_usart1_tx.Init.Mode                = DMA_NORMAL;
+  hdma_usart1_tx.Init.Priority            = DMA_PRIORITY_HIGH;
+  hdma_usart1_tx.Init.FIFOMode            = DMA_FIFOMODE_DISABLE;
+  HAL_DMA_Init(&hdma_usart1_tx);
+
+  __HAL_LINKDMA(uartHandle, hdmatx, hdma_usart1_tx);
+
+  /* DMA2 Stream7 中断 */
+  HAL_NVIC_SetPriority(DMA2_Stream7_IRQn, 5, 0);
+  HAL_NVIC_EnableIRQ(DMA2_Stream7_IRQn);
+
+  /* 使能 USART1 TX DMA 请求 */
+  SET_BIT(uartHandle->Instance->CR3, USART_CR3_DMAT);
   /* USER CODE END USART1_MspInit 1 */
   }
   else if(uartHandle->Instance==USART2)
@@ -170,6 +218,9 @@ void HAL_UART_MspDeInit(UART_HandleTypeDef* uartHandle)
     PA10     ------> USART1_RX
     */
     HAL_GPIO_DeInit(GPIOA, GPIO_PIN_9|GPIO_PIN_10);
+
+    /* USART1 DMA DeInit */
+    HAL_DMA_DeInit(uartHandle->hdmatx);
 
     /* USART1 interrupt Deinit */
     HAL_NVIC_DisableIRQ(USART1_IRQn);

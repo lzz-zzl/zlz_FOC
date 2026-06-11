@@ -43,27 +43,90 @@ void Serial_Init(void)
 	uart_sem = osSemaphoreNew(1, 0, NULL);  // 最大计数1, 初始可用0
 }
 
-void Serial_SendByte(uint8_t Byte)
+/* ========== DMA TX 环型缓冲区 ========== */
+#define TX_RING_SIZE    512       // 环形缓冲区大小
+#define TX_CHUNK_MAX    256       // 单次 DMA 最大长度
+
+static uint8_t  tx_ring[TX_RING_SIZE];    // 环形缓冲区
+static uint16_t tx_head = 0;              // 写入位置 (生产者)
+static uint16_t tx_tail = 0;              // 读取位置 (消费者)
+static volatile uint8_t tx_dma_busy = 0;  // DMA 正在发送
+static uint8_t  tx_dma_buf[TX_CHUNK_MAX]; // DMA 连续缓冲区
+
+/* 启动 DMA 发送 (从环形缓冲区搬数据到 DMA 缓冲区再发送) */
+static void tx_dma_start(void)
 {
-	HAL_UART_Transmit(&huart1, &Byte, 1, HAL_MAX_DELAY);
+    /* 临界区: 禁止中断, 防止 tx_dma_busy 在任务和 ISR 间竞态 */
+    uint32_t primask = __get_PRIMASK();
+    __disable_irq();
+
+    if (tx_dma_busy) {
+        __set_PRIMASK(primask);
+        return;
+    }
+
+    uint16_t avail = (tx_head >= tx_tail)
+                     ? (tx_head - tx_tail)
+                     : (TX_RING_SIZE - tx_tail);
+    if (avail == 0) {
+        __set_PRIMASK(primask);
+        return;
+    }
+
+    if (avail > TX_CHUNK_MAX) avail = TX_CHUNK_MAX;
+
+    memcpy(tx_dma_buf, &tx_ring[tx_tail], avail);
+    tx_tail = (tx_tail + avail) % TX_RING_SIZE;
+
+    tx_dma_busy = 1;
+    __set_PRIMASK(primask);   /* 恢复中断 — HAL_UART_Transmit_DMA 会在内部开中断 */
+
+    HAL_UART_Transmit_DMA(&huart1, tx_dma_buf, avail);
 }
 
-void Serial_SendArray(uint8_t *Array, uint16_t Length)
+/* 向环形缓冲区写一个字节 */
+static void tx_ring_put(uint8_t c)
 {
-	uint16_t i;
-	for (i = 0; i < Length; i ++)
-	{
-		Serial_SendByte(Array[i]);
-	}
+    uint16_t next = (tx_head + 1) % TX_RING_SIZE;
+    if (next == tx_tail) {
+        /* 缓冲区满 → 丢弃最旧的一个字节 */
+        tx_tail = (tx_tail + 1) % TX_RING_SIZE;
+    }
+    tx_ring[tx_head] = c;
+    tx_head = next;
+}
+
+void Serial_SendByte(uint8_t Byte)
+{
+    tx_ring_put(Byte);
+    tx_dma_start();
 }
 
 void Serial_SendString(char *String)
 {
-	uint8_t i;
-	for (i = 0; String[i] != '\0'; i ++)
-	{
-		Serial_SendByte(String[i]);
-	}
+    for (uint8_t i = 0; String[i] != '\0'; i++) {
+        tx_ring_put(String[i]);
+    }
+    tx_dma_start();
+}
+
+void Serial_SendArray(uint8_t *Array, uint16_t Length)
+{
+    for (uint16_t i = 0; i < Length; i++) {
+        tx_ring_put(Array[i]);
+    }
+    tx_dma_start();
+}
+
+/**
+  * @brief DMA 发送完成回调 — 发送环形缓冲区中的下一块数据.
+  */
+void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart)
+{
+    if (huart->Instance == USART1) {
+        tx_dma_busy = 0;
+        tx_dma_start();  /* 继续发送下一块 */
+    }
 }
 
 uint32_t Serial_Pow(uint32_t X, uint32_t Y)
