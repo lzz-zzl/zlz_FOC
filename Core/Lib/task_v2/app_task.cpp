@@ -91,7 +91,6 @@ public:
 
     static void OLEDUpdate() {
         OLED_ShowNum(2, 12, FOC_GET_state(), 3);
-        OLED_ShowNum(2, 1, FOC_GET_elect_angle(), 3);
         OLED_ShowString(2, 5, "deg");
     }
 
@@ -142,7 +141,7 @@ private:
         FOC_Init();
         for (;;) {
             FOCErrorHandleTask();
-            // Serial_Printf("[plot,%d,%d,%d]\r\n", FOC_Ua, FOC_Ub, FOC_Uc);
+            Serial_Printf("[plot,%d,%d,%d]\r\n", FOC_Ua, FOC_Ub, FOC_Uc);
 
             osDelay(50);
         }
@@ -161,6 +160,7 @@ private:
             MT6701_GetTurns();
 
             OLED_ShowNum(3, 1, raw, 5);
+            OLED_ShowNum(2, 1, FOC_GET_elect_angle(), 3);
             // OLED_ShowNum(3, 7, static_cast<uint16_t>(deg), 3);
             // OLED_ShowSignedNum(4, 11,
             //     static_cast<int16_t>(static_cast<int>(deg * 10.0f) % 10), 2);

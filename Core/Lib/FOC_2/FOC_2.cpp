@@ -10,8 +10,6 @@
 #include "Control.h"
 #include <math.h>
 
-/* 调试输出 */
-extern "C" void Serial_Printf(char *format, ...);
 
 /* ========================================================================== */
 /*                      常量 & 宏                                              */
@@ -283,14 +281,6 @@ void FOC_2::elect_angle_from_encoder() {
     }
     uint32_t numerator = (uint32_t)temp * m_pole_pairs * 360;
     m_elect_angle = (int16_t)((numerator / (MT6701::RESOLUTION - 1)) % 360);
-    /* 调试: 每 ~500ms 输出中间值 (15kHz ÷ 7500 ≈ 2Hz) */
-    static uint16_t dbg_cnt = 0;
-    dbg_cnt++;
-    if (dbg_cnt >= 7500) {
-        dbg_cnt = 0;
-        Serial_Printf("[elec,loc=%d,zero=%d,temp=%lu,num=%lu,angle=%d]\r\n",
-            m_location, m_elect_angle_zero, temp, numerator, m_elect_angle);
-    }
 }
 
 void FOC_2::elect_angle_analog(float rad_s) {
@@ -307,7 +297,7 @@ void FOC_2::elect_angle_analog(float rad_s) {
 void FOC_2::elect_angle_zero_calibration() {
     /* 注意：这里需要 HAL 定时器操作，与 FOC_1.c 一致 */
     HAL_TIM_Base_Stop_IT(m_htim_ctrl);
-    m_ud = 3000;
+    m_ud = 10000;
     m_uq = 0;
     DRIVE_ENABLE;
     move(0);

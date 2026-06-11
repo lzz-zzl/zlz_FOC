@@ -103,7 +103,10 @@ int16_t MT6701::ssi_read_angle() {
     /* 发送 dummy 并接收数据: 8-bit 宽度传 2 字节 (兼容所有 SPI 配置) */
     uint8_t tx_b[2] = {0x00, 0x00};
     uint8_t rx_b[2] = {0, 0};
-    HAL_SPI_TransmitReceive(m_hspi, tx_b, rx_b, 2, HAL_MAX_DELAY);
+    if (HAL_SPI_TransmitReceive(m_hspi, tx_b, rx_b, 2, 100) != HAL_OK) {
+        cs_deassert();
+        return m_angle_14bit;  /* 读取失败, 返回上次值 */
+    }
     uint16_t rx = ((uint16_t)rx_b[0] << 8) | rx_b[1];
 
     cs_deassert();
