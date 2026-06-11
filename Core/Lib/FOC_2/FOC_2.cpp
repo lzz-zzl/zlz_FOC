@@ -122,7 +122,7 @@ void FOC_2_create_default(void) {
         &s_encoder,
         &htim1,
         &htim5,       /* 用 TIM5 (15kHz) 做控制周期，TIM3 留给编码器 */
-        7,        // pole_pairs
+        11,        // pole_pairs
         12.0f,    // u_bus
         7.5f,     // r_wire
         1.7f      // i_max
