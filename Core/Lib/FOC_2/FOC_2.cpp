@@ -10,6 +10,11 @@
 #include "Control.h"
 #include <math.h>
 
+/* check_I.h 没有 extern "C" 守卫, C++ 需手动包裹 */
+extern "C" {
+#include "check_I.h"
+}
+
 
 /* ========================================================================== */
 /*                      常量 & 宏                                              */
@@ -160,6 +165,13 @@ FOC_2::FOC_2(const Config &cfg)
       m_elect_angle_zero(11101),
       m_speed(0.0f),
       m_speed_target(0.0f),
+      m_current_q_pid{}, m_current_d_pid{},
+      m_current_q_obj{}, m_current_d_obj{},
+      m_i_a_fb(0.0f), m_i_b_fb(0.0f), m_i_c_fb(0.0f),
+      m_i_alpha_fb(0.0f), m_i_beta_fb(0.0f),
+      m_i_q_fb(0.0f), m_i_d_fb(0.0f),
+      m_i_q_ref(0.0f), m_i_d_ref(0.0f),
+      m_adc_zero_a(2048), m_adc_zero_b(2048),
       m_start_angle(0),
       m_per_count(0),
       m_check_wire_count(0),
@@ -215,6 +227,10 @@ void FOC_2::pid_param_init() {
     Control_PID_Init(&m_direct_location0_pid, 15.0f, 0.15f, 50.0f, -32767.0f, 32767.0f, 8000.0f);
     Control_PID_Init(&m_direct_location1_pid, 45.0f, 0.4f, 100.0f, -32767.0f, 32767.0f, 8000.0f);
     PID_EnableActualFilter(&m_direct_location0_pid, lowpass_filter, &m_derivative_filter);
+
+    /* 电流环 PI — ADC 单位→Q15: ±2048→±32767, 因此 Kp≈16 */
+    Control_PID_Init(&m_current_q_pid, 8.0f, 0.1f, 0.0f, -32767.0f, 32767.0f, 10000.0f);
+    Control_PID_Init(&m_current_d_pid, 8.0f, 0.1f, 0.0f, -32767.0f, 32767.0f, 10000.0f);
 }
 
 /* ========================================================================== */
@@ -266,6 +282,45 @@ void FOC_2::move(int16_t angle) {
 void FOC_2::max_accelerate() {
     const int16_t acc = (int16_t)(m_r_wire * m_i_max * Q16 / m_u_bus);
     m_uq = acc;
+}
+
+/* ========================================================================== */
+/*                      电流环 — Clarke / Park / PI                           */
+/* ========================================================================== */
+
+void FOC_2::current_clarke()
+{
+    /* 读 ADC -> 减去零点 */
+    float a = (float)((int16_t)I_Check_Get_M1_A() - m_adc_zero_a);
+    float b = (float)((int16_t)I_Check_Get_M1_B() - m_adc_zero_b);
+
+    /* Clarke: 三相 -> αβ (保留 ADC 单位, PI 输出限幅已适应) */
+    m_i_alpha_fb = a;
+    m_i_beta_fb  = (a + 2.0f * b) * 0.57735027f;  /* ÷√3 */
+}
+
+void FOC_2::current_park()
+{
+    /* sin/cos 表是 Q15, 转浮点便于直接与电流值运算 */
+    float cos_t = (float)m_cos_table[m_elect_angle] / Q15_SCALE;
+    float sin_t = (float)m_sin_table[m_elect_angle] / Q15_SCALE;
+
+    /* Park: αβ -> dq (纯浮点, F407 有 FPU 够快) */
+    m_i_d_fb =  m_i_alpha_fb * cos_t + m_i_beta_fb * sin_t;
+    m_i_q_fb = -m_i_alpha_fb * sin_t + m_i_beta_fb * cos_t;
+}
+
+void FOC_2::current_pi_loop()
+{
+    /* q 轴 PI: ref - feedback -> Vq */
+    m_current_q_obj.Target = m_i_q_ref;
+    m_current_q_obj.Actual = m_i_q_fb;
+    m_uq = (int16_t)PID_Calculate(&m_current_q_pid, &m_current_q_obj);
+
+    /* d 轴 PI: 目标始终为 0 (弱磁时才需 Id) */
+    m_current_d_obj.Target = 0.0f;
+    m_current_d_obj.Actual = m_i_d_fb;
+    m_ud = (int16_t)PID_Calculate(&m_current_d_pid, &m_current_d_obj);
 }
 
 /* ========================================================================== */
@@ -326,7 +381,7 @@ void FOC_2::speed_pid_loop() {
     m_speed_obj.Actual = m_speed;
     float output = PID_Calculate(&m_speed_pid, &m_speed_obj);
     m_ud = 0;
-    m_uq = (int16_t)output;
+    m_i_q_ref = output;   /* 速度环输出 → 电流环 q 轴目标 */
 }
 
 void FOC_2::location_target_pid() {
@@ -345,7 +400,7 @@ void FOC_2::location_target_pid() {
     m_speed_obj.Target = loc_speed;
     m_speed_obj.Actual = m_speed;
     float output = PID_Calculate(&m_speed_pid, &m_speed_obj);
-    m_uq = (int16_t)output;
+    m_i_q_ref = output;   /* 输出到电流环 */
 }
 
 void FOC_2::direct_location_pid() {
@@ -362,7 +417,7 @@ void FOC_2::direct_location_pid() {
     } else {
         output = PID_I_deadband_Calculate(&m_direct_location1_pid, &m_location_obj);
     }
-    m_uq = (int16_t)output;
+    m_i_q_ref = output;   /* 输出到电流环 */
 }
 
 /* ========================================================================== */
@@ -386,23 +441,23 @@ void FOC_2::period() {
     (void)m_encoder->get_angle_deg();
     elect_angle_from_encoder();
 
-    /* 速度环 / 位置环 — 每 30 次调用执行一次 */
+    /* 速度环 / 位置环 — 每 30 次调用执行一次 (500Hz) */
     if (m_per_count >= 30) {
         m_per_count = 0;
-        m_speed = m_encoder->calc_speed_rpm_low_pass()/60.0f;
+        m_speed = m_encoder->calc_speed_rpm_low_pass() / 60.0f;
 
         if (m_state == 3) {
-            speed_pid_loop();
+            speed_pid_loop();       /* 输出 m_i_q_ref */
         }
         if (m_state == 4) {
-            location_target_pid();
+            location_target_pid();  /* 输出 m_i_q_ref */
             int16_t err = m_location_target - m_location;
             if (err < ERR_LOCATION && err > -ERR_LOCATION) {
                 m_location_target_state = 1;
             }
         }
         if (m_state == 5) {
-            direct_location_pid();
+            direct_location_pid();  /* 输出 m_i_q_ref */
             int16_t err = m_location_target - m_location;
             if (err < ERR_LOCATION && err > -ERR_LOCATION) {
                 m_location_target_state = 1;
@@ -412,23 +467,27 @@ void FOC_2::period() {
 
     /* 越界保护 */
     if (m_location > m_max_location || m_location < m_min_location) {
-        m_uq = 0; m_ud = 0;
+        m_i_q_ref = 0; m_uq = 0; m_ud = 0;
     }
 
-    /* 状态机执行 */
+    /* 电流环与状态机执行 */
     if (m_state == 1) {
+        /* 开环 — 无电流环, 直接电压控制 */
         elect_angle_analog(m_speed_target);
-        move(m_elect_angle);
         m_ud = 3000;
+        move(m_elect_angle);
     }
     else if (m_state == 2) {
-        m_uq = m_uq; /* 外部通过 set_uq 设定 */
+        /* 电压直接控制 — 外部设 Uq, 无电流环 */
         elect_angle_from_encoder();
         move(m_elect_angle);
     }
     else if (m_state == 3 || m_state == 4 || m_state == 5) {
-        m_ud = 0;
-        elect_angle_from_encoder();
+        /* 闭环模式: 电流环每 15kHz 执行一次 */
+        current_clarke();
+        current_park();
+        current_pi_loop();   /* 输出 m_uq, m_ud */
+
         move(m_elect_angle);
     }
     else if (m_state == 111) {
@@ -485,6 +544,11 @@ void FOC_2::init() {
     HAL_TIM_PWM_Start(m_htim_pwm, TIM_CHANNEL_1);
     HAL_TIM_PWM_Start(m_htim_pwm, TIM_CHANNEL_2);
     HAL_TIM_PWM_Start(m_htim_pwm, TIM_CHANNEL_3);
+
+    /* ADC 零点校准 (50 次平均) */
+    I_Check_Calibrate(50);
+    m_adc_zero_a = I_Check_Get_Offset_M1_A();
+    m_adc_zero_b = I_Check_Get_Offset_M1_B();
 
     elect_angle_zero_calibration();
     set_volt(0, 0, 0);

@@ -86,6 +86,11 @@ private:
     static inline int16_t mul_q15(int16_t a, int16_t b);
     static inline uint16_t min_three(uint16_t a, uint16_t b, uint16_t c);
 
+    /* ---------- 电流环 ---------- */
+    void current_clarke();
+    void current_park();
+    void current_pi_loop();
+
     /* ---------- 硬件 ---------- */
     MT6701            *m_encoder;
     TIM_HandleTypeDef *m_htim_pwm;
@@ -121,9 +126,26 @@ private:
     control_PID    m_location_pid;
     control_PID    m_direct_location0_pid;
     control_PID    m_direct_location1_pid;
+    control_PID    m_current_q_pid;
+    control_PID    m_current_d_pid;
     control_object m_speed_obj;
     control_object m_location_obj;
+    control_object m_current_q_obj;
+    control_object m_current_d_obj;
     lowpass_Filter  m_derivative_filter;
+
+    /* ---------- 电流反馈 (ADC, 浮点) ---------- */
+    float    m_i_a_fb;       // A 相电流 (安培等效, ADC 单位)
+    float    m_i_b_fb;       // B 相电流
+    float    m_i_c_fb;       // C 相电流 = -(A+B)
+    float    m_i_alpha_fb;   // α 轴电流
+    float    m_i_beta_fb;    // β 轴电流
+    float    m_i_q_fb;       // q 轴电流反馈
+    float    m_i_d_fb;       // d 轴电流反馈
+    float    m_i_q_ref;      // q 轴电流目标 (来自速度环)
+    float    m_i_d_ref;      // d 轴电流目标 (=0)
+    int16_t  m_adc_zero_a;   // ADC 零点偏移 A
+    int16_t  m_adc_zero_b;   // ADC 零点偏移 B
 
     /* ---------- sin/cos 查表 ---------- */
     int16_t m_sin_table[360];
