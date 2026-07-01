@@ -153,7 +153,6 @@ int main(void)
   MX_UART4_Init();
   MX_USART3_UART_Init();
   MX_USART6_UART_Init();
-  HAL_UART_Receive_DMA(&huart6, uart6_rx_buf, sizeof(uart6_rx_buf));  /* USART6 DMA 连续接收 */
   /* USER CODE BEGIN 2 */
   HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, GPIO_PIN_SET);
 
@@ -176,23 +175,19 @@ int main(void)
   HAL_GPIO_Init(GPIOE, &en_gpio);
   HAL_GPIO_WritePin(GPIOE, GPIO_PIN_8, GPIO_PIN_RESET);  // 先禁止使能
 
-  Serial_Init();
+  // 阻塞发送测试 — 绕过 DMA，直接发
+  HAL_UART_Transmit(&huart1, (uint8_t*)"[test]USART1 blocking OK\r\n", 26, 100);
   // MPU6050_Init();
-
-
-
-  //test//  test
-
-  App_Task_Create();
-
-
-
 
   /* USER CODE END 2 */
 
   /* Init scheduler */
   osKernelInitialize();  /* Call init function for freertos objects (in cmsis_os2.c) */
   MX_FREERTOS_Init();
+
+  /* CMSIS-RTOS2: 所有 osThreadNew/osSemaphoreNew 必须在 Initialize 之后、Start 之前 */
+  Serial_Init();         // osSemaphoreNew
+  App_Task_Create();     // osThreadNew
 
   /* Start scheduler */
   osKernelStart();

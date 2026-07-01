@@ -154,6 +154,19 @@ int fputc(int ch, FILE *f)
 	return ch;
 }
 
+void Serial_Firewater(float *data, uint8_t n){
+	char buf[128];
+	uint16_t pos = 0;
+	for (uint8_t i = 0; i < n; i++) {
+		pos += snprintf(buf + pos, sizeof(buf) - pos, "%.2f", (double)data[i]);
+		if (i < n - 1 && pos < sizeof(buf) - 2)
+			buf[pos++] = ',';
+	}
+	buf[pos++] = '\n';
+	buf[pos]   = '\0';
+	Serial_SendString(buf);
+}
+
 void Serial_Printf(char *format, ...)
 {
 	char String[100];
@@ -163,6 +176,12 @@ void Serial_Printf(char *format, ...)
 	va_end(arg);
 	Serial_SendString(String);
 }
+
+
+
+
+
+
 
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
