@@ -330,7 +330,7 @@ void HAL_UART_MspInit(UART_HandleTypeDef* uartHandle)
 
   /* USER CODE BEGIN USART6_MspInit 1 */
 
-  /* USART6_RX DMA Init — DMA2_Stream1, Channel 5, CIRCULAR 连续接收 */
+  /* USART6_RX DMA Init — 暂注释
   __HAL_RCC_DMA2_CLK_ENABLE();
   hdma_usart6_rx.Instance                 = DMA2_Stream1;
   hdma_usart6_rx.Init.Channel             = DMA_CHANNEL_5;
@@ -350,8 +350,13 @@ void HAL_UART_MspInit(UART_HandleTypeDef* uartHandle)
   __HAL_LINKDMA(uartHandle, hdmarx, hdma_usart6_rx);
 
   /* DMA 中断 (半/全传输回调) */
-  HAL_NVIC_SetPriority(DMA2_Stream1_IRQn, 5, 0);
-  HAL_NVIC_EnableIRQ(DMA2_Stream1_IRQn);
+  // HAL_NVIC_SetPriority(DMA2_Stream1_IRQn, 5, 0);
+  // HAL_NVIC_EnableIRQ(DMA2_Stream1_IRQn);
+
+
+  /* USART6 中断 (错误、超时等) */
+  HAL_NVIC_SetPriority(USART6_IRQn, 5, 0);
+  HAL_NVIC_EnableIRQ(USART6_IRQn);
 
   /* USER CODE END USART6_MspInit 1 */
   }

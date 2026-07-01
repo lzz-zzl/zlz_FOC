@@ -26,6 +26,8 @@ void Serial_SendString(char *String);
 void Serial_SendNumber(uint32_t Number, uint8_t Length);
 void Serial_Printf(char *format, ...);
 void Serial_Firewater(float *data, uint8_t n);
+void Serial_JustFloat(float *data, uint8_t n);
+void LOG(const char *tag, const char *format, ...);
 void Serial_GET_order();
 void Serial_debug_init(control_object * object, control_PID * PID);
 

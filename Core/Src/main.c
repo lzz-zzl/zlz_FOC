@@ -153,6 +153,7 @@ int main(void)
   MX_UART4_Init();
   MX_USART3_UART_Init();
   MX_USART6_UART_Init();
+  // HAL_UART_Receive_DMA(&huart6, uart6_rx_buf, sizeof(uart6_rx_buf));  /* DMA 暂注释 */
   /* USER CODE BEGIN 2 */
   HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, GPIO_PIN_SET);
 
@@ -177,6 +178,14 @@ int main(void)
 
   // 阻塞发送测试 — 绕过 DMA，直接发
   HAL_UART_Transmit(&huart1, (uint8_t*)"[test]USART1 blocking OK\r\n", 26, 100);
+  // firewater 测试 — 先直接发硬编码字符串确认通路
+  HAL_UART_Transmit(&huart1, (uint8_t*)"150,250,350\n", 11, 100);
+  // 再用函数发
+  float test_ch[] = { 1.5f, 2.5f, 3.5f };
+  Serial_Firewater(test_ch, 3);
+  /* justfloat 测试 */
+  float jf_ch[] = { 100.0f, 200.0f, 300.0f };
+  Serial_JustFloat(jf_ch, 3);
   // MPU6050_Init();
 
   /* USER CODE END 2 */

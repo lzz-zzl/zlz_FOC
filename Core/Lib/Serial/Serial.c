@@ -154,17 +154,79 @@ int fputc(int ch, FILE *f)
 	return ch;
 }
 
-void Serial_Firewater(float *data, uint8_t n){
-	char buf[128];
-	uint16_t pos = 0;
-	for (uint8_t i = 0; i < n; i++) {
-		pos += snprintf(buf + pos, sizeof(buf) - pos, "%.2f", (double)data[i]);
-		if (i < n - 1 && pos < sizeof(buf) - 2)
-			buf[pos++] = ',';
-	}
-	buf[pos++] = '\n';
-	buf[pos]   = '\0';
-	Serial_SendString(buf);
+/**
+  * @brief  VOFA+ justfloat 协议输出 — 二进制裸浮点，尾标记 +inf
+  *         每个 float 4 字节 (STM32 little-endian IEEE754)
+  *         结尾 4 字节 0x00 0x00 0x80 0x7F (+inf) 标记帧结束
+  *         上位机选 justfloat 协议，自动波形显示
+  * @param  data 浮点数组
+  * @param  n    数组元素个数
+  */
+void Serial_JustFloat(float *data, uint8_t n)
+{
+    /* 尾标记: IEEE754 +inf = 0x7F800000, little-endian → [00 00 80 7F] */
+    static const uint8_t tail[4] = { 0x00, 0x00, 0x80, 0x7F };
+
+    for (uint8_t i = 0; i < n; i++) {
+        Serial_SendArray((uint8_t *)&data[i], 4);
+    }
+    Serial_SendArray((uint8_t *)tail, 4);
+}
+
+/**
+  * @brief  简易日志打印 [tag] format...
+  *         用法: LOG("FOC", "speed=%d", speed);
+  */
+void LOG(const char *tag, const char *format, ...)
+{
+    char buf[128];
+    uint16_t pos = 0;
+
+    /* [tag] */
+    buf[pos++] = '[';
+    while (*tag && pos < sizeof(buf) - 3) {
+        buf[pos++] = *tag++;
+    }
+    buf[pos++] = ']';
+    buf[pos++] = ' ';
+
+    /* format 正文 */
+    va_list arg;
+    va_start(arg, format);
+    pos += vsnprintf(buf + pos, sizeof(buf) - pos, format, arg);
+    va_end(arg);
+
+    /* 换行 */
+    if (pos < sizeof(buf) - 2) {
+        buf[pos++] = '\r';
+        buf[pos++] = '\n';
+    }
+    buf[pos] = '\0';
+
+    Serial_SendString(buf);
+}
+
+/**
+  * @brief  VOFA+ firewater 协议输出 — 逗号分隔浮点数，换行结尾
+  *         上机位选 firewater 模式即可自动绘图
+  *         使用整数缩放避免 newlib-nano %f 问题
+  * @param  data 浮点数组
+  * @param  n    数组元素个数
+  */
+void Serial_Firewater(float *data, uint8_t n)
+{
+    char buf[128];
+    uint16_t pos = 0;
+    for (uint8_t i = 0; i < n; i++) {
+        /* 缩放 ×100 保留2位小数，用整数打印 */
+        int16_t v = (int16_t)(data[i] * 100.0f);
+        pos += snprintf(buf + pos, sizeof(buf) - pos, "%d", v);
+        if (i < n - 1 && pos < sizeof(buf) - 2)
+            buf[pos++] = ',';
+    }
+    buf[pos++] = '\n';
+    buf[pos]   = '\0';
+    Serial_SendString(buf);
 }
 
 void Serial_Printf(char *format, ...)
