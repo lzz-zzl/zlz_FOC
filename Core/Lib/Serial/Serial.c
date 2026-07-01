@@ -8,6 +8,7 @@
 #include "FOC_1.h"
 #include "OLED.h"
 #include "Control.h"
+#include "JY61P.h"
 
 
 
@@ -32,6 +33,7 @@ char Serial_RxPacket2[100];
 
 uint8_t temp_rxdata1;
 uint8_t temp_rxdata2;
+uint8_t temp_rxdata6;
 uint8_t Serial_RxFlag;
 uint8_t Serial_RxFlag2;
 
@@ -40,6 +42,7 @@ void Serial_Init(void)
 	/* USART1/2 已在 main.c 中由 MX_USARTx_UART_Init() 初始化, 不再重复调用 */
 	HAL_UART_Receive_IT(&huart1, &temp_rxdata1, 1);
 	HAL_UART_Receive_IT(&huart2, &temp_rxdata2, 1);
+	HAL_UART_Receive_IT(&huart6, &temp_rxdata6, 1);
 	uart_sem = osSemaphoreNew(1, 0, NULL);  // 最大计数1, 初始可用0
 }
 
@@ -245,8 +248,7 @@ void Serial_Printf(char *format, ...)
 
 
 
-void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
-{
+void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
 	static uint8_t RxState_1 = 0;    // 接收状态机
 	static uint8_t pRxPacket_1 = 0;  // 缓存指针
 
@@ -323,12 +325,15 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 					pRxPacket_2++;
 				}
 			}
+			if(huart->Instance == USART2) HAL_UART_Receive_IT(&huart2, &temp_rxdata2, 1);
 		}
-		if(huart->Instance == USART2) HAL_UART_Receive_IT(&huart2, &temp_rxdata2, 1);
+		else if(huart->Instance == USART6)
+		{
+			JY61P_RxCallback(temp_rxdata6);
+			HAL_UART_Receive_IT(&huart6, &temp_rxdata6, 1);
+		}
 	}
 }
-
-
 
 
 

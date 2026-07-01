@@ -1,11 +1,9 @@
 //
 // Created on 2026/7/2.
 //
-// JY61P 串口六轴姿态传感器 — UART 通信.
+// JY61P 串口六轴姿态传感器 — UART 中断接收.
 //
-// 默认 115200 8N1, 10Hz 输出.
-//
-// 帧格式 (11 bytes):
+// 帧格式 (11 bytes/帧):
 //   0x55 0x51 + ax(short) + ay(short) + az(short) + T + Sum = 加速度
 //   0x55 0x52 + wx(short) + wy(short) + wz(short) + T + Sum = 角速度
 //   0x55 0x53 + Roll(short)+Pitch(short)+Yaw(short)+ T + Sum = 角度
@@ -26,8 +24,9 @@
 extern "C" {
 #endif
 
-void    JY61P_Create(UART_HandleTypeDef *huart, uint8_t *dma_buf, uint16_t buf_len);
-void    JY61P_Refresh(void);
+void    JY61P_Init(UART_HandleTypeDef *huart);
+void    JY61P_RxCallback(uint8_t data);    /* 在 HAL_UART_RxCpltCallback 中调用 */
+void    JY61P_Refresh(void);               /* 解析最新帧 */
 
 float   JY61P_GetAccX(void);
 float   JY61P_GetAccY(void);
@@ -48,15 +47,10 @@ float   JY61P_GetTemp(void);
 
 class JY61P {
 public:
-    struct Config {
-        UART_HandleTypeDef *huart;
-        uint8_t            *dma_buf;
-        uint16_t            buf_len;
-    };
+    explicit JY61P(UART_HandleTypeDef *huart);
 
-    explicit JY61P(const Config &cfg);
-
-    void refresh();
+    void rx_byte(uint8_t data);   /* 中断中喂字节 */
+    void refresh();                /* 任务中调用, 更新数据 */
 
     float get_acc_x()     const { return m_acc_x; }
     float get_acc_y()     const { return m_acc_y; }
@@ -71,16 +65,19 @@ public:
 
 private:
     UART_HandleTypeDef *m_huart;
-    uint8_t            *m_dma_buf;
-    uint16_t            m_buf_len;
 
+    /* 帧解码结果 */
     float m_acc_x, m_acc_y, m_acc_z;
     float m_gyro_x, m_gyro_y, m_gyro_z;
     float m_roll, m_pitch, m_yaw;
     float m_temp;
 
-    bool parse_frame(uint8_t type, int16_t &v1, int16_t &v2, int16_t &v3, uint8_t &temp);
-    uint8_t sum_check(const uint8_t *data, uint8_t len);
+    /* 状态机 */
+    uint8_t m_frame_buf[11];
+    uint8_t m_frame_idx;
+    uint8_t m_frame_state;  /* 0=wait 0x55, 1=wait type, 2=collect, 3=done */
+
+    void parse_11bytes(const uint8_t *buf);
 };
 
 #endif /* __cplusplus */

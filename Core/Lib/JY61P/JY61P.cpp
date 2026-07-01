@@ -1,18 +1,12 @@
 //
 // Created on 2026/7/2.
 //
-// JY61P 串口六轴姿态传感器 — UART 通信.
-//
-// USART6 DMA CIRCULAR 连续接收, Refresh() 中扫描 DMA 缓冲解析最新帧.
+// JY61P 串口六轴姿态传感器 — UART 中断接收.
 //
 // 帧格式 (11 bytes):
-//   HEADER(2) + DATA(6) + T(1) + SUM(1)
+//   0x55 + type + data(6) + temp(2) + Sum(1)
 //
-//   0x55 0x51 + axL axH ayL ayH azL azH + T + Sum = 加速度
-//   0x55 0x52 + wxL wxH wyL wyH wzL wzH + T + Sum = 角速度
-//   0x55 0x53 + rlL rlH ptL ptH ywL ywH + T + Sum = 角度
-//
-//   校验: Sum = 0x55 + type + data[0..5] + T (单字节累加)
+//   状态机: 掉头 0x55 → 收 type + 9 字节 → 校验 → 解析
 //
 
 #include "JY61P.h"
@@ -22,121 +16,149 @@
 /*                              常量                                            */
 /* ========================================================================== */
 
-static constexpr float ACCEL_SCALE = 16.0f / 32768.0f;   // ±16g
-static constexpr float GYRO_SCALE  = 2000.0f / 32768.0f; // ±2000°/s
-static constexpr float ANGLE_SCALE = 180.0f / 32768.0f;  // ±180°
+static constexpr float ACCEL_SCALE = 16.0f / 32768.0f;
+static constexpr float GYRO_SCALE  = 2000.0f / 32768.0f;
+static constexpr float ANGLE_SCALE = 180.0f / 32768.0f;
 
 /* ========================================================================== */
 /*                              JY61P 类                                      */
 /* ========================================================================== */
 
-JY61P::JY61P(const Config &cfg)
-    : m_huart(cfg.huart),
-      m_dma_buf(cfg.dma_buf),
-      m_buf_len(cfg.buf_len),
+JY61P::JY61P(UART_HandleTypeDef *huart)
+    : m_huart(huart),
       m_acc_x(0), m_acc_y(0), m_acc_z(0),
       m_gyro_x(0), m_gyro_y(0), m_gyro_z(0),
       m_roll(0), m_pitch(0), m_yaw(0),
-      m_temp(0)
+      m_temp(0),
+      m_frame_idx(0),
+      m_frame_state(0)
 {
 }
 
 /**
-  * @brief  JY61P 帧校验和。
-  *         Sum = 帧头2字节 + 数据6字节 + 温度1字节, 取低8位。
+  * @brief  校验和: Sum = 帧头2 + 数据6 + 温度2 = 10 字节累加, 取低 8 位.
   */
-uint8_t JY61P::sum_check(const uint8_t *data, uint8_t len)
+static uint8_t sum_check(const uint8_t *data)
 {
     uint8_t sum = 0;
-    for (uint8_t i = 0; i < len; i++) {
+    for (uint8_t i = 0; i < 10; i++) {
         sum += data[i];
     }
     return sum;
 }
 
 /**
-  * @brief  在 DMA 缓冲中搜索指定类型的 JY61P 帧。
-  * @param  type  帧类型: 0x51=accel, 0x52=gyro, 0x53=angle
-  * @param  v1,v2,v3  解析出的三个 short 值
-  * @param  temp      温度字节
-  * @retval true  解析成功
-  *         false 未找到有效帧
+  * @brief  解析 11 字节完整帧, 更新对应数据.
   */
-bool JY61P::parse_frame(uint8_t type, int16_t &v1, int16_t &v2, int16_t &v3, uint8_t &temp)
+void JY61P::parse_11bytes(const uint8_t *buf)
 {
-    /* 获取 DMA 当前传输位置 (NDTR = 还剩多少没传) */
-    uint16_t ndtr = (uint16_t)(__HAL_DMA_GET_COUNTER(m_huart->hdmarx));
-    uint16_t write_idx = m_buf_len - ndtr;  // DMA 当前写入位置
+    uint8_t type = buf[1];
 
-    /* 在缓冲中向前搜索 0x55 0x{type} 帧头 */
-    for (uint16_t i = 0; i < m_buf_len - 11; i++) {
-        /* 从 write_idx 倒回去搜索, 找最新的一帧 */
-        uint16_t idx = (write_idx >= i) ? (write_idx - i) : (m_buf_len - (i - write_idx));
-        if (idx > m_buf_len - 11) continue;
+    /* 提取三个 short (小端) */
+    int16_t v1 = (int16_t)(buf[2] | (buf[3] << 8));
+    int16_t v2 = (int16_t)(buf[4] | (buf[5] << 8));
+    int16_t v3 = (int16_t)(buf[6] | (buf[7] << 8));
+    int16_t temp_raw = (int16_t)(buf[8] | (buf[9] << 8));
 
-        /* 检查帧头 */
-        if (m_dma_buf[idx] != 0x55) continue;
-        if (m_dma_buf[idx + 1] != type) continue;
-
-        /* 校验和 */
-        uint8_t calc = sum_check(&m_dma_buf[idx], 9);  // header(2) + data(6) + T(1)
-        if (calc != m_dma_buf[idx + 10]) continue;      // checksum mismatch
-
-        /* 解析 (小端) */
-        v1   = (int16_t)(m_dma_buf[idx + 2] | (m_dma_buf[idx + 3] << 8));
-        v2   = (int16_t)(m_dma_buf[idx + 4] | (m_dma_buf[idx + 5] << 8));
-        v3   = (int16_t)(m_dma_buf[idx + 6] | (m_dma_buf[idx + 7] << 8));
-        temp = m_dma_buf[idx + 8];
-        return true;
-    }
-    return false;  /* 没找到有效帧 */
-}
-
-/**
-  * @brief  刷新所有数据.
-  *         在 DMA 缓冲中搜索最新的 accel/gyro/angle 帧并更新成员.
-  *         通常在任务循环中周期性调用 (如 50ms).
-  */
-void JY61P::refresh()
-{
-    int16_t v1, v2, v3;
-    uint8_t temp;
-
-    /* 加速度 */
-    if (parse_frame(0x51, v1, v2, v3, temp)) {
+    switch (type) {
+    case 0x51:  /* 加速度 */
         m_acc_x = (float)v1 * ACCEL_SCALE;
         m_acc_y = (float)v2 * ACCEL_SCALE;
         m_acc_z = (float)v3 * ACCEL_SCALE;
-        m_temp  = (float)temp;
-    }
+        m_temp  = (float)temp_raw;
+        break;
 
-    /* 角速度 */
-    if (parse_frame(0x52, v1, v2, v3, temp)) {
+    case 0x52:  /* 角速度 */
         m_gyro_x = (float)v1 * GYRO_SCALE;
         m_gyro_y = (float)v2 * GYRO_SCALE;
         m_gyro_z = (float)v3 * GYRO_SCALE;
-    }
+        break;
 
-    /* 欧拉角 */
-    if (parse_frame(0x53, v1, v2, v3, temp)) {
+    case 0x53:  /* 欧拉角 */
         m_roll  = (float)v1 * ANGLE_SCALE;
         m_pitch = (float)v2 * ANGLE_SCALE;
         m_yaw   = (float)v3 * ANGLE_SCALE;
+        break;
+
+    default:
+        break;
     }
 }
 
+/**
+  * @brief  中断中喂一个字节.
+  *         状态机: 掉头 0x55 → 收满 11 字节 → 校验 → 解析.
+  *         必须在中断回调中调用 (如 HAL_UART_RxCpltCallback).
+  */
+void JY61P::rx_byte(uint8_t data)
+{
+    switch (m_frame_state) {
+
+    case 0:  /* 等待帧头 0x55 */
+        if (data == 0x55) {
+            m_frame_buf[0] = data;
+            m_frame_idx = 1;
+            m_frame_state = 1;
+        }
+        break;
+
+    case 1:  /* 等待 type (0x51/0x52/0x53) */
+        if (data == 0x51 || data == 0x52 || data == 0x53) {
+            m_frame_buf[1] = data;
+            m_frame_idx = 2;
+            m_frame_state = 2;
+        } else if (data == 0x55) {
+            /* 连续 0x55, 重置起始位置 */
+            m_frame_buf[0] = 0x55;
+            m_frame_idx = 1;
+        } else {
+            m_frame_state = 0;  /* 无效, 重新掉头 */
+        }
+        break;
+
+    case 2:  /* 收剩余 9 字节 (data[6] + T[1] + Sum[1]) */
+        m_frame_buf[m_frame_idx++] = data;
+        if (m_frame_idx >= 11) {
+            /* 校验和 */
+            if (sum_check(m_frame_buf) == m_frame_buf[10]) {
+                parse_11bytes(m_frame_buf);
+            }
+            m_frame_state = 0;  /* 继续下一帧 */
+        }
+        break;
+
+    default:
+        m_frame_state = 0;
+        break;
+    }
+}
+
+/**
+  * @brief  refresh 函数 (保留兼容, 当前无 DMA 缓冲, 数据已在中断中在线解析).
+  *         后续可在此加滤波或降采样.
+  */
+void JY61P::refresh()
+{
+    /* 数据已在 rx_byte 中实时解析, 无需额外操作 */
+}
+
 /* ========================================================================== */
-/*               extern "C" 包装 (供 C 文件调用)                               */
+/*               extern "C" 包装                                              */
 /* ========================================================================== */
 
 static JY61P *g_jy61p = nullptr;
 
 extern "C" {
 
-void JY61P_Create(UART_HandleTypeDef *huart, uint8_t *dma_buf, uint16_t buf_len)
+void JY61P_Init(UART_HandleTypeDef *huart)
 {
-    static JY61P s_inst({huart, dma_buf, buf_len});
+    static JY61P s_inst(huart);
     g_jy61p = &s_inst;
+}
+
+void JY61P_RxCallback(uint8_t data)
+{
+    if (g_jy61p) g_jy61p->rx_byte(data);
 }
 
 void JY61P_Refresh(void)
