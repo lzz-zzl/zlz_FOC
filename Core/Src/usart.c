@@ -25,6 +25,9 @@
 /* USART1 TX DMA 句柄 (非 static, 供 stm32f4xx_it.c 引用) */
 DMA_HandleTypeDef hdma_usart1_tx;
 
+/* USART6 RX DMA 句柄 */
+DMA_HandleTypeDef hdma_usart6_rx;
+
 /* USER CODE END 0 */
 
 UART_HandleTypeDef huart4;
@@ -75,7 +78,7 @@ void MX_USART1_UART_Init(void)
 
   /* USER CODE END USART1_Init 1 */
   huart1.Instance = USART1;
-  huart1.Init.BaudRate = 9600;
+  huart1.Init.BaudRate = 115200;
   huart1.Init.WordLength = UART_WORDLENGTH_8B;
   huart1.Init.StopBits = UART_STOPBITS_1;
   huart1.Init.Parity = UART_PARITY_NONE;
@@ -327,6 +330,29 @@ void HAL_UART_MspInit(UART_HandleTypeDef* uartHandle)
 
   /* USER CODE BEGIN USART6_MspInit 1 */
 
+  /* USART6_RX DMA Init — DMA2_Stream1, Channel 5, CIRCULAR 连续接收 */
+  __HAL_RCC_DMA2_CLK_ENABLE();
+  hdma_usart6_rx.Instance                 = DMA2_Stream1;
+  hdma_usart6_rx.Init.Channel             = DMA_CHANNEL_5;
+  hdma_usart6_rx.Init.Direction           = DMA_PERIPH_TO_MEMORY;
+  hdma_usart6_rx.Init.PeriphInc           = DMA_PINC_DISABLE;
+  hdma_usart6_rx.Init.MemInc              = DMA_MINC_ENABLE;
+  hdma_usart6_rx.Init.PeriphDataAlignment = DMA_PDATAALIGN_BYTE;
+  hdma_usart6_rx.Init.MemDataAlignment    = DMA_MDATAALIGN_BYTE;
+  hdma_usart6_rx.Init.Mode                = DMA_CIRCULAR;
+  hdma_usart6_rx.Init.Priority            = DMA_PRIORITY_HIGH;
+  hdma_usart6_rx.Init.FIFOMode            = DMA_FIFOMODE_DISABLE;
+  if (HAL_DMA_Init(&hdma_usart6_rx) != HAL_OK)
+  {
+      Error_Handler();
+  }
+
+  __HAL_LINKDMA(uartHandle, hdmarx, hdma_usart6_rx);
+
+  /* DMA 中断 (半/全传输回调) */
+  HAL_NVIC_SetPriority(DMA2_Stream1_IRQn, 5, 0);
+  HAL_NVIC_EnableIRQ(DMA2_Stream1_IRQn);
+
   /* USER CODE END USART6_MspInit 1 */
   }
 }
@@ -428,6 +454,10 @@ void HAL_UART_MspDeInit(UART_HandleTypeDef* uartHandle)
     HAL_GPIO_DeInit(GPIOC, GPIO_PIN_6|GPIO_PIN_7);
 
   /* USER CODE BEGIN USART6_MspDeInit 1 */
+
+  /* USART6_RX DMA DeInit */
+  HAL_NVIC_DisableIRQ(DMA2_Stream1_IRQn);
+  HAL_DMA_DeInit(&hdma_usart6_rx);
 
   /* USER CODE END USART6_MspDeInit 1 */
   }

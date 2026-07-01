@@ -55,6 +55,8 @@
 /* Private variables ---------------------------------------------------------*/
 
 /* USER CODE BEGIN PV */
+/* USART6 DMA 接收缓冲 (CIRCULAR, 陀螺仪) */
+uint8_t uart6_rx_buf[256];
 
 /* USER CODE END PV */
 
@@ -151,6 +153,7 @@ int main(void)
   MX_UART4_Init();
   MX_USART3_UART_Init();
   MX_USART6_UART_Init();
+  HAL_UART_Receive_DMA(&huart6, uart6_rx_buf, sizeof(uart6_rx_buf));  /* USART6 DMA 连续接收 */
   /* USER CODE BEGIN 2 */
   HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, GPIO_PIN_SET);
 
