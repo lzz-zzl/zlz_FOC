@@ -157,8 +157,7 @@ int main(void)
   HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, GPIO_PIN_SET);
 
   // HAL_ADC_Start(&hadc1);
-  HAL_TIM_Base_Start_IT(&htim10);
-  HAL_TIM_Base_Start_IT(&htim2);
+  // HAL_TIM_Base_Start_IT(&htim2);
   HAL_TIM_Base_Start_IT(&htim5);
 
   I_Check_Init();
@@ -175,28 +174,13 @@ int main(void)
   HAL_GPIO_Init(GPIOE, &en_gpio);
   HAL_GPIO_WritePin(GPIOE, GPIO_PIN_8, GPIO_PIN_RESET);  // 先禁止使能
 
-  // 阻塞发送测试 — 绕过 DMA，直接发
-  HAL_UART_Transmit(&huart1, (uint8_t*)"[test]USART1 blocking OK\r\n", 26, 100);
-  // firewater 测试 — 先直接发硬编码字符串确认通路
-  HAL_UART_Transmit(&huart1, (uint8_t*)"150,250,350\n", 11, 100);
-  // 再用函数发
-  float test_ch[] = { 1.5f, 2.5f, 3.5f };
-  Serial_Firewater(test_ch, 3);
-  /* justfloat 测试 */
-  float jf_ch[] = { 100.0f, 200.0f, 300.0f };
-  Serial_JustFloat(jf_ch, 3);
   // MPU6050_Init();
-
   /* USER CODE END 2 */
 
   /* Init scheduler */
   osKernelInitialize();  /* Call init function for freertos objects (in cmsis_os2.c) */
   MX_FREERTOS_Init();
-
-  /* CMSIS-RTOS2: 所有 osThreadNew/osSemaphoreNew 必须在 Initialize 之后、Start 之前 */
-  Serial_Init();         // osSemaphoreNew
-  App_Task_Create();     // osThreadNew
-
+  App_Task_Create();
   /* Start scheduler */
   osKernelStart();
 

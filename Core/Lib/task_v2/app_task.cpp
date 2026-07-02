@@ -174,9 +174,9 @@ static void CreateTasks() {
         { "SerialTask",  &SerialTaskFunc,  config::SERIAL_STACK_SIZE, config::SERIAL_PRIORITY },
         {"Serial_debug", &Serial_debug,     256 * 4,                   40},
         { "OLED_Task",   &OLEDTaskFunc,    config::OLED_STACK_SIZE,   config::OLED_PRIORITY },
-        { "FOC_Task",    &FOCTaskFunc,     config::FOC_STACK_SIZE,    config::FOC_PRIORITY },
-        { "MT6701_Test", &MT6701TaskFunc,  config::MT6701_STACK_SIZE, config::MT6701_PRIORITY },
-        { "JY61P_Test",  &JY61PTestTask,   256 * 4,                  30 },
+        // { "FOC_Task",    &FOCTaskFunc,     config::FOC_STACK_SIZE,    config::FOC_PRIORITY },
+        // { "MT6701_Test", &MT6701TaskFunc,  config::MT6701_STACK_SIZE, config::MT6701_PRIORITY },
+        // { "JY61P_Test",  &JY61PTestTask,   256 * 4,                  30 },
     };
 
     for (const auto& t : tasks) {
