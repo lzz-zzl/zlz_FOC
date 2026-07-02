@@ -107,7 +107,7 @@ static void Serial_debug(void * /*argument*/) {
         if (count>3) {
             count = -3;
         }
-        Serial_JustFloat(&count,1);
+        // Serial_JustFloat(&count,1);
         osDelay(10);
     }
 }
@@ -138,8 +138,8 @@ static void MT6701TaskFunc(void* /*argument*/) {
         // OLED_ShowSignedNum(4, 11,
         //     static_cast<int16_t>(static_cast<int>(deg * 10.0f) % 10), 2);
 
-        Serial_Printf("[plot,%d]",raw);
-        osDelay(40);
+        Serial_JustFloat(&deg,1);
+        osDelay(10);
     }
 }
 
@@ -170,10 +170,10 @@ static void CreateTasks() {
 
     constexpr TaskDef tasks[] = {
         // { "SerialTask",  &SerialTaskFunc,  config::SERIAL_STACK_SIZE, config::SERIAL_PRIORITY },
-        {"Serial_debug", &Serial_debug,     256 * 4,                   40},
-        { "OLED_Task",   &OLEDTaskFunc,    config::OLED_STACK_SIZE,   config::OLED_PRIORITY },
+        // {"Serial_debug", &Serial_debug,     256 * 4,                   40},
+        { "OLED_Task",   &OLEDTaskFunc,    config::OLED_STACK_SIZE,   38 },
         // { "FOC_Task",    &FOCTaskFunc,     config::FOC_STACK_SIZE,    config::FOC_PRIORITY },
-        { "MT6701_Test", &MT6701TaskFunc,  config::MT6701_STACK_SIZE, config::MT6701_PRIORITY },
+        { "MT6701_Test", &MT6701TaskFunc,  config::MT6701_STACK_SIZE, 40 },
         // { "JY61P_Test",  &JY61PTestTask,   256 * 4,                  30 },
     };
 

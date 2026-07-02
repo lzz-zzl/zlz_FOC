@@ -71,6 +71,7 @@ message(STATUS "Found Lib sources: ${Lib_SOURCES}")
 # Create an executable object type
 add_executable(${CMAKE_PROJECT_NAME}
         ${Lib_SOURCES}
+        FreeRTOSConfig.h
 )
 
 # Add STM32CubeMX generated sources
