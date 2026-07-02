@@ -76,7 +76,9 @@ static void OLEDTaskFunc(void* /*argument*/) {
         OLED_ShowNum(3, 1, FOC_location, 5);
         OLED_ShowNum(2, 1, FOC_GET_elect_angle(), 3);
         OLED_ShowHexNum(4,1,temp_rxdata6[0],2);
-        OLED_ShowHexNum(4,4,temp_rxdata6[3],2);
+        OLED_ShowHexNum(4,4,temp_rxdata6[1],2);
+        OLED_ShowHexNum(4,7,temp_rxdata6[3],2);
+        OLED_ShowHexNum(4,10,temp_rxdata6[4],2);
 
         osDelay(100);
     }

@@ -174,6 +174,7 @@ int main(void)
   HAL_GPIO_Init(GPIOE, &en_gpio);
   HAL_GPIO_WritePin(GPIOE, GPIO_PIN_8, GPIO_PIN_RESET);  // 先禁止使能
 
+  App_Task_Create();
   // MPU6050_Init();
   /* USER CODE END 2 */
 
