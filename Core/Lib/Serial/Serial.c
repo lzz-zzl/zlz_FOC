@@ -330,11 +330,11 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
 			if(huart->Instance == USART2) HAL_UART_Receive_IT(&huart2, &temp_rxdata2, 1);
 		}
 	}
-	else if(huart->Instance == USART6){
-			// JY61P_RxCallback(temp_rxdata6);
-			// HAL_UART_Receive_IT(&huart6, &temp_rxdata6, 1);
-		if(huart->Instance == USART6) HAL_UART_Receive_IT(&huart6, &temp_rxdata2, 1);
-	}
+	// else if(huart->Instance == USART6){
+	// 		// JY61P_RxCallback(temp_rxdata6);
+	// 		// HAL_UART_Receive_IT(&huart6, &temp_rxdata6, 1);
+	// 	if(huart->Instance == USART6) HAL_UART_Receive_IT(&huart6, temp_rxdata6, 11);
+	// }
 }
 
 

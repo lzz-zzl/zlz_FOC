@@ -180,7 +180,7 @@ int main(void)
   /* Init scheduler */
   osKernelInitialize();  /* Call init function for freertos objects (in cmsis_os2.c) */
   MX_FREERTOS_Init();
-  App_Task_Create();
+
   /* Start scheduler */
   osKernelStart();
 
