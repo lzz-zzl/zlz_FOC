@@ -33,16 +33,17 @@ char Serial_RxPacket2[100];
 
 uint8_t temp_rxdata1;
 uint8_t temp_rxdata2;
-uint8_t temp_rxdata6;
 uint8_t Serial_RxFlag;
 uint8_t Serial_RxFlag2;
+
+uint8_t temp_rxdata6[11];
 
 void Serial_Init(void)
 {
 	/* USART1/2 已在 main.c 中由 MX_USARTx_UART_Init() 初始化, 不再重复调用 */
 	HAL_UART_Receive_IT(&huart1, &temp_rxdata1, 1);
 	HAL_UART_Receive_IT(&huart2, &temp_rxdata2, 1);
-	HAL_UART_Receive_IT(&huart6, &temp_rxdata6, 1);
+	HAL_UART_Receive_IT(&huart6, temp_rxdata6, 11);
 	uart_sem = osSemaphoreNew(1, 0, NULL);  // 最大计数1, 初始可用0
 }
 
@@ -329,8 +330,10 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
 		}
 	}
 	else if(huart->Instance == USART6){
-			JY61P_RxCallback(temp_rxdata6);
-			HAL_UART_Receive_IT(&huart6, &temp_rxdata6, 1);
+
+			// JY61P_RxCallback(temp_rxdata6);
+			// HAL_UART_Receive_IT(&huart6, &temp_rxdata6, 1);
+		if(huart->Instance == USART6) HAL_UART_Receive_IT(&huart6, &temp_rxdata2, 1);
 	}
 }
 

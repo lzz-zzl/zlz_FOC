@@ -145,16 +145,14 @@ static void MT6701TaskFunc(void* /*argument*/) {
 
 static void JY61PTestTask(void* /*argument*/) {
     osDelay(200);
-    JY61P_Init(&huart6);
     for (;;) {
-        JY61P_Refresh();
-        OLED_ShowNum(4, 1, static_cast<uint16_t>(JY61P_GetRoll() * 10), 4);
-        OLED_ShowNum(4, 7, static_cast<uint16_t>(JY61P_GetPitch() * 10), 4);
-        OLED_ShowNum(4, 13, static_cast<uint16_t>(JY61P_GetYaw() * 10), 4);
-        Serial_Printf("[jy61p]r=%.1f p=%.1f y=%.1f\r\n",
-                      (double)JY61P_GetRoll(),
-                      (double)JY61P_GetPitch(),
-                      (double)JY61P_GetYaw());
+        // OLED_ShowNum(4, 1, static_cast<uint16_t>(JY61P_GetRoll() * 10), 4);
+        // OLED_ShowNum(4, 7, static_cast<uint16_t>(JY61P_GetPitch() * 10), 4);
+        // OLED_ShowNum(4, 13, static_cast<uint16_t>(JY61P_GetYaw() * 10), 4);
+        // Serial_Printf("[jy61p]r=%.1f p=%.1f y=%.1f\r\n",
+        //               (double)JY61P_GetRoll(),
+        //               (double)JY61P_GetPitch(),
+        //               (double)JY61P_GetYaw());
         osDelay(100);
     }
 }
@@ -176,7 +174,7 @@ static void CreateTasks() {
         { "OLED_Task",   &OLEDTaskFunc,    config::OLED_STACK_SIZE,   config::OLED_PRIORITY },
         // { "FOC_Task",    &FOCTaskFunc,     config::FOC_STACK_SIZE,    config::FOC_PRIORITY },
         { "MT6701_Test", &MT6701TaskFunc,  config::MT6701_STACK_SIZE, config::MT6701_PRIORITY },
-        { "JY61P_Test",  &JY61PTestTask,   256 * 4,                  30 },
+        // { "JY61P_Test",  &JY61PTestTask,   256 * 4,                  30 },
     };
 
     for (const auto& t : tasks) {
