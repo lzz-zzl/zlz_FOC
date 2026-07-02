@@ -331,9 +331,14 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
 		}
 	}
 	else if(huart->Instance == USART6){
-			// JY61P_RxCallback(temp_rxdata6);
-			// HAL_UART_Receive_IT(&huart6, &temp_rxdata6, 1);
-		if(huart->Instance == USART6) HAL_UART_Receive_IT(&huart6, &temp_rxdata2, 1);
+		static int count = 0;
+
+		// char dbg[32];
+		// sprintf(dbg, "U6 cnt: %d\r\n", count);
+		// Serial_Printf(dbg);
+		count++;
+
+		if(huart->Instance == USART6) HAL_UART_Receive_IT(&huart6, temp_rxdata6, 11);
 	}
 }
 
