@@ -78,7 +78,7 @@ void MX_USART1_UART_Init(void)
 
   /* USER CODE END USART1_Init 1 */
   huart1.Instance = USART1;
-  huart1.Init.BaudRate = 115200;
+  huart1.Init.BaudRate = 921600;
   huart1.Init.WordLength = UART_WORDLENGTH_8B;
   huart1.Init.StopBits = UART_STOPBITS_1;
   huart1.Init.Parity = UART_PARITY_NONE;
@@ -350,13 +350,8 @@ void HAL_UART_MspInit(UART_HandleTypeDef* uartHandle)
   __HAL_LINKDMA(uartHandle, hdmarx, hdma_usart6_rx);
 
   /* DMA 中断 (半/全传输回调) */
-  // HAL_NVIC_SetPriority(DMA2_Stream1_IRQn, 5, 0);
-  // HAL_NVIC_EnableIRQ(DMA2_Stream1_IRQn);
-
-
-  /* USART6 中断 (错误、超时等) */
-  HAL_NVIC_SetPriority(USART6_IRQn, 5, 0);
-  HAL_NVIC_EnableIRQ(USART6_IRQn);
+  HAL_NVIC_SetPriority(DMA2_Stream1_IRQn, 5, 0);
+  HAL_NVIC_EnableIRQ(DMA2_Stream1_IRQn);
 
   /* USER CODE END USART6_MspInit 1 */
   }
