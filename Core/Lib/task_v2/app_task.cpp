@@ -19,6 +19,11 @@ extern "C" {
 
 #include <cstdint>
 
+uint8_t *test_data = NULL;
+void set_testdata(uint8_t * p) {
+    test_data = p;
+}
+
 // ====================================================================
 // 配置常量
 // ====================================================================
@@ -70,6 +75,8 @@ static void OLEDTaskFunc(void* /*argument*/) {
         OLED_ShowString(2, 5, "deg");
         OLED_ShowNum(3, 1, FOC_location, 5);
         OLED_ShowNum(2, 1, FOC_GET_elect_angle(), 3);
+        OLED_ShowHexNum(4,1,temp_rxdata6[0],2);
+        OLED_ShowHexNum(4,4,temp_rxdata6[3],2);
 
         osDelay(100);
     }
@@ -157,6 +164,14 @@ static void JY61PTestTask(void* /*argument*/) {
     }
 }
 
+static void test_uart6(void * /*argument*/) {
+    osDelay(10);
+    for (;;) {
+
+        osDelay(100);
+    }
+}
+
 // ====================================================================
 // FreeRTOS 任务创建入口
 // ====================================================================
@@ -169,7 +184,7 @@ static void CreateTasks() {
     };
 
     constexpr TaskDef tasks[] = {
-        // { "SerialTask",  &SerialTaskFunc,  config::SERIAL_STACK_SIZE, config::SERIAL_PRIORITY },
+        { "SerialTask",  &SerialTaskFunc,  config::SERIAL_STACK_SIZE, config::SERIAL_PRIORITY },
         // {"Serial_debug", &Serial_debug,     256 * 4,                   40},
         { "OLED_Task",   &OLEDTaskFunc,    config::OLED_STACK_SIZE,   38 },
         // { "FOC_Task",    &FOCTaskFunc,     config::FOC_STACK_SIZE,    config::FOC_PRIORITY },

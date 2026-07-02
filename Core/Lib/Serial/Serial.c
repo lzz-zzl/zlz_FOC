@@ -5,11 +5,12 @@
 #include "string.h"
 #include <stdlib.h>
 #include "Serial.h"
+
+#include "app_task.h"
 #include "FOC_1.h"
 #include "OLED.h"
 #include "Control.h"
 #include "JY61P.h"
-
 
 
 osSemaphoreId_t uart_sem;
@@ -330,7 +331,6 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
 		}
 	}
 	else if(huart->Instance == USART6){
-
 			// JY61P_RxCallback(temp_rxdata6);
 			// HAL_UART_Receive_IT(&huart6, &temp_rxdata6, 1);
 		if(huart->Instance == USART6) HAL_UART_Receive_IT(&huart6, &temp_rxdata2, 1);

@@ -11,7 +11,7 @@ extern osSemaphoreId_t uart_sem;
 
 extern char Serial_RxPacket[100];
 extern uint8_t Serial_RxFlag;
-
+extern uint8_t temp_rxdata6[11];
 
 
 extern uint16_t Serial_value[10];
