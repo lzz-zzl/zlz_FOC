@@ -331,14 +331,10 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
 		}
 	}
 	else if(huart->Instance == USART6){
-		static int count = 0;
+		uint8_t temp = temp_rxdata6[0];
+		jy61p_byte_receive(temp);
 
-		// char dbg[32];
-		// sprintf(dbg, "U6 cnt: %d\r\n", count);
-		// Serial_Printf(dbg);
-		count++;
-
-		if(huart->Instance == USART6) HAL_UART_Receive_IT(&huart6, temp_rxdata6, 11);
+		if(huart->Instance == USART6) HAL_UART_Receive_IT(&huart6, temp_rxdata6, 1);
 	}
 }
 
@@ -433,5 +429,20 @@ void Serial_GET_order() {
 		}
 		Serial_RxFlag2 = 0;
 	}
+}
 
+void Serial_GET_order2() {
+	if (Serial_RxFlag == 1)
+	{
+		HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_13);
+		OLED_ShowString(1,1,Serial_RxPacket);
+		char * tag = strtok(Serial_RxPacket,":");
+		if(strcmp(tag, "value") == 0)
+		{
+			int8_t name = atoi(strtok(NULL, ","));
+
+		}
+
+		Serial_RxFlag = 0;
+	}
 }

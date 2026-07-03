@@ -71,14 +71,17 @@ static void OLEDTaskFunc(void* /*argument*/) {
     for (;;) {
         OLED_ShowNum(1, 1, FOC_count, 5);
 
-        OLED_ShowNum(2, 12, FOC_GET_state(), 3);
-        OLED_ShowString(2, 5, "deg");
-        OLED_ShowNum(3, 1, FOC_location, 5);
+        OLED_ShowNum(1, 12, FOC_GET_state(), 3);
         OLED_ShowNum(2, 1, FOC_GET_elect_angle(), 3);
-        OLED_ShowHexNum(4,1,temp_rxdata6[0],2);
-        OLED_ShowHexNum(4,4,temp_rxdata6[1],2);
-        OLED_ShowHexNum(4,7,temp_rxdata6[3],2);
-        OLED_ShowHexNum(4,10,temp_rxdata6[4],2);
+
+        int16_t temp1,temp2;
+
+        OLED_ShowHexNum(3,1,temp_rxdata6[0],2);
+        OLED_ShowHexNum(3,4,temp_rxdata6[1],2);
+
+        JY61P_GetAccelRaw (&temp1,&temp1,&temp2);
+        OLED_ShowNum(4,1,temp1,5);
+        OLED_ShowNum(4,7,temp2,5);
 
         osDelay(100);
     }
@@ -98,7 +101,6 @@ static void SerialTaskFunc(void* /*argument*/) {
         OLED_ShowNum(4, 15, serial_count, 2);
 
         FOC_SET_state(Serial_value[1]);
-        Serial_Printf("[plot,%d,%d,%d]", 1, 10, 100);
         FOC_Set_Uq(Serial_slider[0] * 100);
 
         if ((FOC_GET_state() == 4 || FOC_GET_state() == 5) && Serial_key[1] != 1) {
@@ -126,7 +128,7 @@ static void FOCTaskFunc(void* /*argument*/) {
     FOC_Init();
     for (;;) {
         FOC_error_handle();
-        Serial_Printf("[plot,%d,%d,%d]\r\n", FOC_Ua, FOC_Ub, FOC_Uc);
+        // Serial_Printf("[plot,%d,%d,%d]\r\n", FOC_Ua, FOC_Ub, FOC_Uc);
         osDelay(50);
     }
 }
@@ -143,7 +145,7 @@ static void MT6701TaskFunc(void* /*argument*/) {
         float   deg   = MT6701_GetDeg();
         MT6701_GetTurns();
 
-        OLED_ShowNum(3, 7,MT6701_GetAngle(), 5);
+        OLED_ShowNum(2, 7,MT6701_GetAngle(), 5);
         // OLED_ShowSignedNum(4, 11,
         //     static_cast<int16_t>(static_cast<int>(deg * 10.0f) % 10), 2);
 
@@ -188,8 +190,8 @@ static void CreateTasks() {
     constexpr TaskDef tasks[] = {
         { "SerialTask",  &SerialTaskFunc,  config::SERIAL_STACK_SIZE, config::SERIAL_PRIORITY },
         // {"Serial_debug", &Serial_debug,     256 * 4,                   40},
-        { "OLED_Task",   &OLEDTaskFunc,    config::OLED_STACK_SIZE,   38 },
-        // { "FOC_Task",    &FOCTaskFunc,     config::FOC_STACK_SIZE,    config::FOC_PRIORITY },
+        { "OLED_Task",   &OLEDTaskFunc,    config::OLED_STACK_SIZE,   41 },
+        { "FOC_Task",    &FOCTaskFunc,     config::FOC_STACK_SIZE,    config::FOC_PRIORITY },
         { "MT6701_Test", &MT6701TaskFunc,  config::MT6701_STACK_SIZE, 40 },
         // { "JY61P_Test",  &JY61PTestTask,   256 * 4,                  30 },
     };
