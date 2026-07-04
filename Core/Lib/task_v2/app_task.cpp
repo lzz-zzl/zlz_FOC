@@ -16,9 +16,12 @@ extern "C" {
 #include "check_I.h"
 #include "spi.h"
 #include "usart.h"
+#include "tim.h"
 }
 
 #include <cstdint>
+#include "FOC_3.h"
+#include "Control.h"
 
 uint8_t *test_data = NULL;
 void set_testdata(uint8_t * p) {
@@ -62,6 +65,7 @@ static void OLEDTaskFunc(void* argument);
 static void FOCTaskFunc(void* argument);
 static void MT6701TaskFunc(void* argument);
 static void JY61PTestTask(void* argument);
+static void FOC_3_test_task(void* argument);
 
 // ====================================================================
 // 任务函数实现
@@ -121,6 +125,35 @@ static void SerialTaskFunc(void* /*argument*/) {
 
 
 
+
+static void FOC_3_test_task(void* /*argument*/) {
+    /* 创建 PID */
+    static control_PID speed_pid, loc_pid, curq_pid, curd_pid, direct_pid;
+
+    /* 初始化三环 PID 参数 */
+    Control_PID_Init(&speed_pid,   1200.0f, 20.0f, 0.0f, -32767.0f, 32767.0f, 10000.0f);
+    Control_PID_Init(&loc_pid,     0.02f, 0.000005f, 0.001f, -4.0f, 4.0f, 15.0f);
+    Control_PID_Init(&curq_pid,    8.0f, 0.1f, 0.0f, -32767.0f, 32767.0f, 10000.0f);
+    Control_PID_Init(&curd_pid,    8.0f, 0.1f, 0.0f, -32767.0f, 32767.0f, 10000.0f);
+    Control_PID_Init(&direct_pid,  15.0f, 0.15f, 50.0f, -32767.0f, 32767.0f, 8000.0f);
+
+    /* 创建电机 */
+    FOC_3::PIDCtrl p;
+    p.speed     = &speed_pid;
+    p.location  = &loc_pid;
+    p.direct    = &direct_pid;
+    p.current_q = &curq_pid;
+    p.current_d = &curd_pid;
+
+    static MT6701 enc({&hspi1, GPIOD, GPIO_PIN_7});
+    static FOC_3 motor({&enc, &htim1, &htim5, 11, 12.0f, 7.5f, 1.7f,01,"pitch"});
+    motor.init(p);
+
+    for (;;) {
+        motor.error_handle();
+        osDelay(50);
+    }
+}
 
 static void FOCTaskFunc(void* /*argument*/) {
     FOC_Init();
@@ -190,6 +223,7 @@ static void task_printf(void * /*argument*/) {
     }
 }
 
+
 // ====================================================================
 // FreeRTOS 任务创建入口
 // ====================================================================
@@ -203,10 +237,12 @@ static void CreateTasks() {
 
     constexpr TaskDef tasks[] = {
         { "SerialTask",  &SerialTaskFunc,  config::SERIAL_STACK_SIZE, config::SERIAL_PRIORITY },
-        { "OLED_Task",   &OLEDTaskFunc,    config::OLED_STACK_SIZE,   41 },
-        { "FOC_Task",    &FOCTaskFunc,     config::FOC_STACK_SIZE,    config::FOC_PRIORITY },
+        { "OLED_Task",   &OLEDTaskFunc,    config::OLED_STACK_SIZE,   40 },
+        // { "FOC_Task",    &FOCTaskFunc,     config::FOC_STACK_SIZE,    config::FOC_PRIORITY },
         { "task_printf", &task_printf,  config::MT6701_STACK_SIZE, 44 },
         // { "JY61P_Test",  &JY61PTestTask,   256 * 4,                  30 },
+
+        { "FOC_Task",    &FOC_3_test_task,     config::FOC_STACK_SIZE,    config::FOC_PRIORITY },
     };
 
     for (const auto& t : tasks) {

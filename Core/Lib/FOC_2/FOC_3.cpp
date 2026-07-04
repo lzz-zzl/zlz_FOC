@@ -25,6 +25,8 @@ FOC_3::FOC_3(const Config &cfg)
       m_u_bus(cfg.u_bus),
       m_r_wire(cfg.r_wire),
       m_i_max(cfg.i_max),
+      m_id(cfg.id),
+      m_name(cfg.name),
       m_state(0),
       m_location(0),
       m_location_target(4000),
@@ -69,23 +71,12 @@ void FOC_3::table_init() {
     }
 }
 
-void FOC_3::pid_param_init() {
-    Control_PID_Init(&m_speed_pid, 1200.0f, 20.0f, 0.0f, -32767.0f, 32767.0f, 10000.0f);
-    Control_PID_Init(&m_location_pid, 0.02f, 0.000005f, 0.001f, -4.0f, 4.0f, 15.0f);
-
-    m_derivative_filter.alpha = 0.3f;
-    m_derivative_filter.last_value = 0.0f;
-
-    Control_PID_Init(&m_direct_location0_pid, 15.0f, 0.15f, 50.0f, -32767.0f, 32767.0f, 8000.0f);
-    Control_PID_Init(&m_direct_location1_pid, 45.0f, 0.4f, 100.0f, -32767.0f, 32767.0f, 8000.0f);
-    PID_EnableActualFilter(&m_direct_location0_pid, lowpass_filter, &m_derivative_filter);
-
-    Control_PID_Init(&m_current_q_pid, 8.0f, 0.1f, 0.0f, -32767.0f, 32767.0f, 10000.0f);
-    Control_PID_Init(&m_current_d_pid, 8.0f, 0.1f, 0.0f, -32767.0f, 32767.0f, 10000.0f);
-}
-
-void FOC_3::init() {
-    pid_param_init();
+void FOC_3::init(const PIDCtrl &pid) {
+    m_current_q_pid = pid.current_q;
+    m_current_d_pid = pid.current_d;
+    m_speed_pid     = pid.speed;
+    m_location_pid  = pid.location;
+    m_direct_pid    = pid.direct;
     table_init();
 
     HAL_TIM_PWM_Start(m_htim_pwm, TIM_CHANNEL_1);
@@ -205,11 +196,11 @@ void FOC_3::current_park() {
 void FOC_3::current_pi_loop() {
     m_current_q_obj.Target = m_i_q_ref;
     m_current_q_obj.Actual = m_i_q_fb;
-    m_uq = (int16_t)PID_Calculate(&m_current_q_pid, &m_current_q_obj);
+    m_uq = (int16_t)PID_Calculate(m_current_q_pid, &m_current_q_obj);
 
     m_current_d_obj.Target = 0.0f;
     m_current_d_obj.Actual = m_i_d_fb;
-    m_ud = (int16_t)PID_Calculate(&m_current_d_pid, &m_current_d_obj);
+    m_ud = (int16_t)PID_Calculate(m_current_d_pid, &m_current_d_obj);
 }
 
 /* ========================================================================== */
@@ -219,7 +210,7 @@ void FOC_3::current_pi_loop() {
 void FOC_3::speed_pid_loop() {
     m_speed_obj.Target = m_speed_target;
     m_speed_obj.Actual = m_speed;
-    m_i_q_ref = PID_Calculate(&m_speed_pid, &m_speed_obj);
+    m_i_q_ref = PID_Calculate(m_speed_pid, &m_speed_obj);
 }
 
 void FOC_3::location_target_pid() {
@@ -233,10 +224,10 @@ void FOC_3::location_target_pid() {
     m_location_obj.Target = (float)(m_location + pos_err);
     m_location_obj.Actual = (float)m_location;
 
-    float loc_speed = PID_Calculate(&m_location_pid, &m_location_obj);
+    float loc_speed = PID_Calculate(m_location_pid, &m_location_obj);
     m_speed_obj.Target = loc_speed;
     m_speed_obj.Actual = m_speed;
-    m_i_q_ref = PID_Calculate(&m_speed_pid, &m_speed_obj);
+    m_i_q_ref = PID_Calculate(m_speed_pid, &m_speed_obj);
 }
 
 void FOC_3::direct_location_pid() {
@@ -246,11 +237,7 @@ void FOC_3::direct_location_pid() {
     m_location_obj.Target = (float)m_location_target;
     m_location_obj.Actual = (float)m_location;
 
-    float diff = m_location_obj.Target - m_location_obj.Actual;
-    if (diff < LOCATION_TIPPING && diff > -LOCATION_TIPPING)
-        m_i_q_ref = PID_I_deadband_Calculate(&m_direct_location0_pid, &m_location_obj);
-    else
-        m_i_q_ref = PID_I_deadband_Calculate(&m_direct_location1_pid, &m_location_obj);
+    m_i_q_ref = PID_Calculate(m_direct_pid, &m_location_obj);
 }
 
 /* ========================================================================== */
@@ -271,7 +258,7 @@ void FOC_3::period() {
         if (m_state == 5) direct_location_pid();
     }
 
-    if (m_location > m_max_location || m_location < m_min_location) {
+    if (m_location > m_max_location+100 || m_location < m_min_location-100) {
         m_i_q_ref = 0; m_uq = 0; m_ud = 0;
     }
 
@@ -290,6 +277,8 @@ void FOC_3::period() {
         current_pi_loop();
         move(m_elect_angle);
     }
+
+
     else if (m_state == 111) {
         m_check_wire_count++;
         m_uq = 4000; m_ud = 0;
@@ -356,25 +345,22 @@ void FOC_3::parse_keyvalue(const char *key, float val)
 
 static FOC_3 *g_foc3_default = nullptr;
 
-FOC_3 *FOC_3_Init(void) {
-    static MT6701 s_enc({&hspi1, GPIOD, GPIO_PIN_7});
-    static FOC_3 s_foc((FOC_3::Config){
-        &s_enc,
-        &htim1,
-        &htim5,
-        11,         // pole_pairs
-        12.0f,      // u_bus
-        7.5f,       // r_wire
-        1.7f        // i_max
-    });
-    g_foc3_default = &s_foc;
-    s_foc.init();
-    return &s_foc;
-}
+// FOC_3 *FOC_3_Init(void) {
+//     static MT6701 s_enc({&hspi1, GPIOD, GPIO_PIN_7});
+//     static FOC_3 s_foc((FOC_3::Config){
+//         &s_enc,
+//         &htim1,
+//         &htim5,
+//         11,         // pole_pairs
+//         12.0f,      // u_bus
+//         7.5f,       // r_wire
+//         1.7f        // i_max
+//     });
+//     g_foc3_default = &s_foc;
+//     s_foc.init({});  /* 暂不绑定 PID，后续外部调用 set_xxx 或解析命令 */
+//     return &s_foc;
+// }
 
-FOC_3 *FOC_3_Get(void) {
-    return g_foc3_default;
-}
 
 void FOC_3_ParseCmd(const char *key, float val)
 {

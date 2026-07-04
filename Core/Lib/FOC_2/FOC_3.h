@@ -14,6 +14,8 @@
 
 class FOC_3 {
 public:
+
+
     struct Config {
         MT6701            *encoder;
         TIM_HandleTypeDef *htim_pwm;        // TIM1
@@ -22,12 +24,23 @@ public:
         float              u_bus;           // 母线电压 (V)
         float              r_wire;          // 相电阻 (Ω)
         float              i_max;           // 最大电流 (A)
+        uint8_t            id = 0;          // 电机 ID
+        const char        *name = nullptr;  // 电机名称
     };
 
     explicit FOC_3(const Config &cfg);
 
+    /* 三环 PID 指针 (传入外部已初始化的 PID) */
+    struct PIDCtrl {
+        control_PID *current_q = nullptr;
+        control_PID *current_d = nullptr;
+        control_PID *speed     = nullptr;
+        control_PID *location  = nullptr;
+        control_PID *direct    = nullptr;   // 直接位置
+    };
+
     /* ---------- 生命周期 ---------- */
-    void init();
+    void init(const PIDCtrl &pid);
     void period();              // 15kHz ISR 调用
     void error_handle();        // FOC_task 中调用
 
@@ -46,6 +59,10 @@ public:
     int16_t  get_uq() const    { return m_uq; }
     int16_t  get_ud() const    { return m_ud; }
 
+    /* ---------- 标识 ---------- */
+    uint8_t  get_id()    const { return m_id; }
+    const char *get_name() const { return m_name; }
+
     /* ---------- 只读 ---------- */
     uint16_t get_elect_angle() const { return (uint16_t)m_elect_angle; }
     int16_t  get_location()    const { return m_location; }
@@ -57,11 +74,12 @@ public:
     uint16_t get_ub() const { return m_ub; }
     uint16_t get_uc() const { return m_uc; }
 
-    /* ---------- PID 访问 ---------- */
-    control_PID &speed_pid()             { return m_speed_pid; }
-    control_PID &location_pid()          { return m_location_pid; }
-    control_PID &direct_location0_pid()  { return m_direct_location0_pid; }
-    control_PID &direct_location1_pid()  { return m_direct_location1_pid; }
+    /* ---------- PID 访问 (指针, 可能为 nullptr) ---------- */
+    control_PID *speed_pid()             { return m_speed_pid; }
+    control_PID *location_pid()          { return m_location_pid; }
+    control_PID *direct_pid()            { return m_direct_pid; }
+    control_PID *current_q_pid()         { return m_current_q_pid; }
+    control_PID *current_d_pid()         { return m_current_d_pid; }
 
     /* ---------- 调试 ---------- */
     void elect_angle_analog(float rad_s);
@@ -80,6 +98,8 @@ private:
     float              m_u_bus;
     float              m_r_wire;
     float              m_i_max;
+    uint8_t            m_id;
+    const char        *m_name;
 
     /* 状态 */
     uint8_t  m_state;
@@ -111,18 +131,16 @@ private:
     float    m_i_q_ref, m_i_d_ref;
     int16_t  m_adc_zero_a, m_adc_zero_b;
 
-    /* PID */
-    control_PID    m_speed_pid;
-    control_PID    m_location_pid;
-    control_PID    m_direct_location0_pid;
-    control_PID    m_direct_location1_pid;
-    control_PID    m_current_q_pid;
-    control_PID    m_current_d_pid;
+    /* PID (外部指针, 传入后绑定) */
+    control_PID    *m_speed_pid     = nullptr;
+    control_PID    *m_location_pid  = nullptr;
+    control_PID    *m_direct_pid    = nullptr;
+    control_PID    *m_current_q_pid = nullptr;
+    control_PID    *m_current_d_pid = nullptr;
     control_object m_speed_obj;
     control_object m_location_obj;
     control_object m_current_q_obj;
     control_object m_current_d_obj;
-    lowpass_Filter m_derivative_filter;
 
     /* sin/cos 查表 */
     inline static int16_t m_sin_table[360] ={};
@@ -130,7 +148,6 @@ private:
     inline static bool if_tableInit = false;
 
     /* 内部方法 */
-    void pid_param_init();
     void table_init();
     void elect_angle_zero_calibration();
     void check_wire();
@@ -171,8 +188,7 @@ private:
 };
 
 /* 全局默认实例 (与 FOC_2 同一套硬件) */
-FOC_3 *FOC_3_Init(void);
-FOC_3 *FOC_3_Get(void);
+// FOC_3 *FOC_3_Init(void);
 
 /* 串口命令解析 (VOFA+ 键值对) — 作用于默认实例 */
 void FOC_3_ParseCmd(const char *key, float val);
