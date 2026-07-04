@@ -46,11 +46,8 @@ void JY61P_ParseAccel(uint8_t *buf) {
     jy61p_data.temp_raw = temp_raw;
 }
 void JY61P_ParseAccel_16bit(uint8_t *buf){
-    // 单位转换
-    // 加速度: 32768 = 16g (默认±16g量程)
-    // 温度: 0.1℃/LSB
+    // if (buf[0] != 0x55 || buf[1] != 0x52) return;
 
-    // 提取原始数据 (小端模式)
     int16_t ax_raw = (int16_t)(buf[2] | (buf[3] << 8));
     int16_t ay_raw = (int16_t)(buf[4] | (buf[5] << 8));
     int16_t az_raw = (int16_t)(buf[6] | (buf[7] << 8));
@@ -80,7 +77,7 @@ void JY61P_ParseAccel_16bit(uint8_t *buf){
 //     jy61p_data.gz_raw = gz_raw;
 // }
 void JY61P_ParseGyro_16bit(uint8_t *buf) {
-    if (buf[0] != 0x55 || buf[1] != 0x53) return;
+    // if (buf[0] != 0x55 || buf[1] != 0x52) return;
 
     // 提取原始数据 (小端模式)
     int16_t gx_raw = (int16_t)(buf[2] | (buf[3] << 8));
@@ -98,7 +95,7 @@ void JY61P_ParseGyro_16bit(uint8_t *buf) {
  * @param buf 数据缓冲区 (10字节)
  */
 void JY61P_ParseAngle_16bit(uint8_t *buf) {
-    if (buf[0] != 0x55 || buf[1] != 0x54) return;
+    // if (buf[0] != 0x55 || buf[1] != 0x53) return;
 
     // 提取原始数据 (小端模式)
     int16_t roll_raw = (int16_t)(buf[2] | (buf[3] << 8));
@@ -251,7 +248,7 @@ void jy61p_byte_receive(uint8_t data) {
 
         case STATE_HEADER:
             // 已收到0x55，检查第二个字节是否是有效数据类型
-            if (data == 0x52 || data == 0x53 || data == 0x54) {
+            if (data == 0x51 || data == 0x52 || data == 0x53) {
                 jy61p_buffer[1] = data;
                 rx_index = 2;
                 rx_state = STATE_DATA;
@@ -274,6 +271,7 @@ void jy61p_byte_receive(uint8_t data) {
             // 判断是否接收完整一帧 (11字节)
             if (rx_index >= 11) {
 
+                // Serial_SendVar("temp",jy61p_buffer[3]);
                 JY61P_ParseAngle_16bit(jy61p_buffer);
                 JY61P_ParseGyro_16bit(jy61p_buffer);
                 JY61P_ParseAccel_16bit(jy61p_buffer);

@@ -31,4 +31,9 @@ void LOG(const char *tag, const char *format, ...);
 void Serial_GET_order();
 void Serial_debug_init(control_object * object, control_PID * PID);
 
+void Serial_SendFloat(const char *tag, float value);
+void Serial_SendInt(const char *tag, int value);
+void Serial_SendUInt(const char *tag, unsigned int value);
+void Serial_SendVar(const char *tag, unsigned int value);
+
 #endif

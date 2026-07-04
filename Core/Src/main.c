@@ -309,7 +309,14 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
       tim3_count = 0;
     }
     FOC_period();
+    HAL_GPIO_WritePin(GPIOC, GPIO_PIN_4  , GPIO_PIN_SET);
+
+    // __HAL_TIM_SetCompare(&htim1, TIM_CHANNEL_3, 500);
+    // __HAL_TIM_SetCompare(&htim1, TIM_CHANNEL_1, 0);
+    // __HAL_TIM_SetCompare(&htim1, TIM_CHANNEL_2, 200);
+
   }
+
 
 
   /* USER CODE END Callback 0 */

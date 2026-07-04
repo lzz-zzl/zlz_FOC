@@ -2,7 +2,7 @@
 // Created by zhang on 2026/6/9.
 //
 // 双电机 × 两相电流检测 (ADC1 + DMA).
-// 硬件: ADC1 IN6(PA6)=M1_A, IN7(PA7)=M1_B, IN8(PB0)=M2_A, IN9(PB1)=M2_B
+// 硬件: ADC1 IN6(PA6)=M1_A, IN7(PA7)=M2_B, IN8(PB0)=M2_A, IN9(PB1)=M1_B
 // 触发: TIM5_CH1 OC1REF 上升沿 (@ 15kHz, 通过 PA0 AF2 输出 PWM)
 // DMA:  CIRCULAR 双缓冲 (ping-pong), 中断回调更新最新值
 //
@@ -18,9 +18,9 @@
 
 /* ADC1 序列 (Rank):  1=IN6  2=IN7  3=IN8  4=IN9 */
 #define I_CHECK_M1_A     0       /* s_dma_buf[] 偏移: 电机1 相A (IN6) */
-#define I_CHECK_M1_B     1       /*                    电机1 相B (IN7) */
+#define I_CHECK_M1_B     3       /*                    电机1 相B (IN9) — 硬件实际接 PB1 */
 #define I_CHECK_M2_A     2       /*                    电机2 相A (IN8) */
-#define I_CHECK_M2_B     3       /*                    电机2 相B (IN9) */
+#define I_CHECK_M2_B     1       /*                    电机2 相B (IN7) — 硬件实际接 PA7 */
 
 #define I_CHECK_CH_NUM   4       /* 序列通道数 */
 #define I_CHECK_BUF_LEN  (I_CHECK_CH_NUM * 2)   /* ping-pong 双缓冲长度 */

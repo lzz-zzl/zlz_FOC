@@ -42,6 +42,8 @@ file(GLOB_RECURSE Lib_SOURCES
         "${CMAKE_CURRENT_SOURCE_DIR}/Core/Lib/**/*.cpp"
 )
 
+
+
 # 根据选项排除文件
 
 list(FILTER Lib_SOURCES EXCLUDE REGEX ".*FOC_1/.*")
@@ -49,6 +51,8 @@ message(STATUS "FOC_1 module DISABLED")
 
 #list(FILTER Lib_SOURCES EXCLUDE REGEX ".*FOC_2/.*")
 #message(STATUS "FOC_2 module DISABLED")
+
+list(FILTER Lib_SOURCES EXCLUDE REGEX ".*FOC_1/.*")
 
 
 # ---- 选择 app_task 版本（task_v1 = C, task_v2 = C++） ----
@@ -72,6 +76,8 @@ message(STATUS "Found Lib sources: ${Lib_SOURCES}")
 add_executable(${CMAKE_PROJECT_NAME}
         ${Lib_SOURCES}
         FreeRTOSConfig.h
+        Core/Lib/FOC_2/FOC_3.cpp
+        Core/Lib/FOC_2/FOC_3.h
 )
 
 # Add STM32CubeMX generated sources

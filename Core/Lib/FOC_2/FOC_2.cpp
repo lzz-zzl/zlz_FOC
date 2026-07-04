@@ -120,7 +120,7 @@ void FOC_elect_angle_MT6701(void){ /* 内部已处理，保留空壳兼容 */ }
 int16_t foc_test(int16_t a)      { return a; }
 
 void FOC_2_create_default(void) {
-    static MT6701 s_encoder({&hspi2, GPIOB, GPIO_PIN_11});
+    static MT6701 s_encoder({&hspi1, GPIOD, GPIO_PIN_7});
 
     /* 注：s_foc 的构造函数会调用 FOC_2_set_default_instance(this) */
     static FOC_2 s_foc({
@@ -352,7 +352,7 @@ void FOC_2::elect_angle_analog(float rad_s) {
 void FOC_2::elect_angle_zero_calibration() {
     /* 注意：这里需要 HAL 定时器操作，与 FOC_1.c 一致 */
     HAL_TIM_Base_Stop_IT(m_htim_ctrl);
-    m_ud = 10000;
+    m_ud = 3000;
     m_uq = 0;
     DRIVE_ENABLE;
     move(0);

@@ -13,6 +13,7 @@ extern "C" {
 #include "FOC_2.h"
 #include "MT6701.h"
 #include "JY61P.h"
+#include "check_I.h"
 #include "spi.h"
 #include "usart.h"
 }
@@ -71,17 +72,24 @@ static void OLEDTaskFunc(void* /*argument*/) {
     for (;;) {
         OLED_ShowNum(1, 1, FOC_count, 5);
 
+        OLED_ShowNum(3,7 , FOC_location, 3);
         OLED_ShowNum(1, 12, FOC_GET_state(), 3);
         OLED_ShowNum(2, 1, FOC_GET_elect_angle(), 3);
+        OLED_ShowNum(2, 7, FOC_GET_elect_angle_zero(), 5);
 
         int16_t temp1,temp2;
 
-        OLED_ShowHexNum(3,1,temp_rxdata6[0],2);
-        OLED_ShowHexNum(3,4,temp_rxdata6[1],2);
+        // OLED_ShowHexNum(3,1,*temp_rxdata6,2);
+        // OLED_ShowHexNum(3,4,JY61P_GetFrameCount(),2);
 
-        JY61P_GetAccelRaw (&temp1,&temp1,&temp2);
-        OLED_ShowNum(4,1,temp1,5);
-        OLED_ShowNum(4,7,temp2,5);
+        // JY61P_GetAccelRaw (&temp1,&temp1,&temp2);
+        // Serial_SendVar("gx",temp2);
+        // OLED_ShowNum(4,1,temp1,5);
+        // OLED_ShowNum(4,7,temp2,5);
+        int16_t ia = I_Check_Get_M1_A();
+        int16_t ib = I_Check_Get_M1_B();
+        OLED_ShowSignedNum(4, 1, ia, 5);
+        OLED_ShowSignedNum(4, 8, ib, 5);
 
         osDelay(100);
     }
@@ -90,7 +98,7 @@ static void OLEDTaskFunc(void* /*argument*/) {
 static void SerialTaskFunc(void* /*argument*/) {
     Serial_Init();
     // osDelay(200);  // 等外设稳定
-    Serial_Printf("[boot]USART1 ready at 115200\r\n");
+    // Serial_Printf("[boot]USART1 ready at 115200\r\n");
     for (;;) {
         osSemaphoreAcquire(uart_sem, osWaitForever);
 
@@ -111,17 +119,7 @@ static void SerialTaskFunc(void* /*argument*/) {
     }
 }
 
-static void Serial_debug(void * /*argument*/) {
-    for (;;) {
-        static  float count = 0;
-        count+= 0.01;
-        if (count>3) {
-            count = -3;
-        }
-        // Serial_JustFloat(&count,1);
-        osDelay(10);
-    }
-}
+
 
 
 static void FOCTaskFunc(void* /*argument*/) {
@@ -129,6 +127,7 @@ static void FOCTaskFunc(void* /*argument*/) {
     for (;;) {
         FOC_error_handle();
         // Serial_Printf("[plot,%d,%d,%d]\r\n", FOC_Ua, FOC_Ub, FOC_Uc);
+
         osDelay(50);
     }
 }
@@ -168,11 +167,26 @@ static void JY61PTestTask(void* /*argument*/) {
     }
 }
 
-static void test_uart6(void * /*argument*/) {
+static void task_printf(void * /*argument*/) {
     osDelay(10);
     for (;;) {
+        float datas[1];
+        datas[0] = FOC_speed;
+        // Serial_JustFloat(datas,1);
+        int16_t ia = I_Check_Get_M1_A();
+        int16_t ib = I_Check_Get_M1_B();
+        // int16_t ia2 = I_Check_Get_M2_A();
+        // int16_t ib2 = I_Check_Get_M2_B();
 
-        osDelay(100);
+        float temp[4];
+        temp[0] = ia*0.001;
+        temp[1] = ib*0.001;
+        temp[2] = -1*temp[0]-temp[1];
+        // temp[2] = ia2*0.001;
+        // temp[3] = ib2*0.001;
+
+        Serial_JustFloat(temp,3);
+        osDelay(1);
     }
 }
 
@@ -189,10 +203,9 @@ static void CreateTasks() {
 
     constexpr TaskDef tasks[] = {
         { "SerialTask",  &SerialTaskFunc,  config::SERIAL_STACK_SIZE, config::SERIAL_PRIORITY },
-        // {"Serial_debug", &Serial_debug,     256 * 4,                   40},
         { "OLED_Task",   &OLEDTaskFunc,    config::OLED_STACK_SIZE,   41 },
         { "FOC_Task",    &FOCTaskFunc,     config::FOC_STACK_SIZE,    config::FOC_PRIORITY },
-        { "MT6701_Test", &MT6701TaskFunc,  config::MT6701_STACK_SIZE, 40 },
+        { "task_printf", &task_printf,  config::MT6701_STACK_SIZE, 44 },
         // { "JY61P_Test",  &JY61PTestTask,   256 * 4,                  30 },
     };
 

@@ -6,7 +6,7 @@
 #include "stm32f4xx_hal.h"
 
 #define DVR8313_ENABLE_PORT          GPIOE
-#define DVR8313_ENABLE_PIN           GPIO_PIN_8
+#define DVR8313_ENABLE_PIN           GPIO_PIN_10
 
 #define DVR8313_FAULT_PORT           GPIOA
 #define DVR8313_FAULT_PIN            GPIO_PIN_11

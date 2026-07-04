@@ -44,7 +44,7 @@ void Serial_Init(void)
 	/* USART1/2 已在 main.c 中由 MX_USARTx_UART_Init() 初始化, 不再重复调用 */
 	HAL_UART_Receive_IT(&huart1, &temp_rxdata1, 1);
 	HAL_UART_Receive_IT(&huart2, &temp_rxdata2, 1);
-	HAL_UART_Receive_IT(&huart6, temp_rxdata6, 11);
+	HAL_UART_Receive_IT(&huart6, temp_rxdata6, 1);
 	uart_sem = osSemaphoreNew(1, 0, NULL);  // 最大计数1, 初始可用0
 }
 
@@ -209,6 +209,40 @@ void LOG(const char *tag, const char *format, ...)
     buf[pos] = '\0';
 
     Serial_SendString(buf);
+}
+
+// 针对不同类型的实际处理函数
+void Serial_SendFloat(const char *tag, float value) {
+	char buffer[50];
+	snprintf(buffer, sizeof(buffer), "%s: %.2f\n", tag, value);
+	Serial_Printf("%s", buffer);  // 实际发送代码
+}
+
+void Serial_SendInt(const char *tag, int value) {
+	char buffer[50];
+	snprintf(buffer, sizeof(buffer), "%s: %d\n", tag, value);
+	Serial_Printf("%s", buffer);
+}
+
+void Serial_SendUInt(const char *tag, unsigned int value) {
+	char buffer[50];
+	snprintf(buffer, sizeof(buffer), "%s: %u\n", tag, value);
+	Serial_Printf("%s", buffer);
+}
+
+// 泛型宏：根据类型自动选择函数
+#define Serial_SendVa_H(tag, value) \
+_Generic((value), \
+float: Serial_SendFloat, \
+double: Serial_SendFloat, \
+int: Serial_SendInt, \
+unsigned int: Serial_SendUInt, \
+char*: Serial_SendString, \
+const char*: Serial_SendString \
+)(tag, value)
+
+void Serial_SendVar(const char *tag, unsigned int value) {
+	Serial_SendVa_H(tag, value);
 }
 
 /**
