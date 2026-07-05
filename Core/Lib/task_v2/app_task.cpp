@@ -126,6 +126,19 @@ static void SerialTaskFunc(void* /*argument*/) {
 
 
 
+static void TIM1_PWM_test(void* /*argument*/) {
+    osDelay(100);
+    // HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1);
+    // HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_2);
+    // HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_3);
+
+    // __HAL_TIM_SetCompare(&htim1, TIM_CHANNEL_1, 350);  // ~50%
+    // __HAL_TIM_SetCompare(&htim1, TIM_CHANNEL_2, 350);
+    // __HAL_TIM_SetCompare(&htim1, TIM_CHANNEL_3, 350);
+
+    for (;;) osDelay(1000);
+}
+
 static void FOC_3_test_task(void* /*argument*/) {
     /* 创建 PID */
     static control_PID speed_pid, loc_pid, curq_pid, curd_pid, direct_pid;
@@ -146,7 +159,7 @@ static void FOC_3_test_task(void* /*argument*/) {
     p.current_d = &curd_pid;
 
     static MT6701 enc({&hspi1, GPIOD, GPIO_PIN_7});
-    static FOC_3 motor({&enc, &htim1, &htim5, 11, 12.0f, 7.5f, 1.7f,01,"pitch"});
+    static FOC_3 motor({&enc,I_check_M1, &htim1, &htim5, 11, 12.0f, 7.5f, 1.7f,01,"pitch"});
     motor.init(p);
 
     for (;;) {
@@ -218,7 +231,7 @@ static void task_printf(void * /*argument*/) {
         // temp[2] = ia2*0.001;
         // temp[3] = ib2*0.001;
 
-        Serial_JustFloat(temp,3);
+        // Serial_JustFloat(temp,3);
         osDelay(1);
     }
 }
@@ -242,7 +255,8 @@ static void CreateTasks() {
         { "task_printf", &task_printf,  config::MT6701_STACK_SIZE, 44 },
         // { "JY61P_Test",  &JY61PTestTask,   256 * 4,                  30 },
 
-        { "FOC_Task",    &FOC_3_test_task,     config::FOC_STACK_SIZE,    config::FOC_PRIORITY },
+        { "TIM1_test",   &TIM1_PWM_test,       256 * 4,                  40 },
+        // { "FOC_3_test_task",    &FOC_3_test_task,     config::FOC_STACK_SIZE,    config::FOC_PRIORITY },
     };
 
     for (const auto& t : tasks) {

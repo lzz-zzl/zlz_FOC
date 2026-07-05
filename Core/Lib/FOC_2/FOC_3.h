@@ -14,10 +14,14 @@
 
 class FOC_3 {
 public:
-
+    static FOC_3 *instances[16];
+    static uint8_t motorID_debug;
+    static uint8_t motorID_list[16];
+    static uint8_t pid_debug;        /* 0=cur_q, 1=cur_d, 2=speed, 3=location, 4=direct */
 
     struct Config {
         MT6701            *encoder;
+        void (*get_current)(int16_t *i_a, int16_t *i_b);
         TIM_HandleTypeDef *htim_pwm;        // TIM1
         TIM_HandleTypeDef *htim_ctrl;       // TIM5
         uint8_t            pole_pairs;
@@ -92,6 +96,7 @@ public:
 private:
     /* 硬件 */
     MT6701            *m_encoder;
+    void             (*m_get_current)(int16_t *i_a, int16_t *i_b);
     TIM_HandleTypeDef *m_htim_pwm;
     TIM_HandleTypeDef *m_htim_ctrl;
     uint8_t            m_pole_pairs;
@@ -103,16 +108,24 @@ private:
 
     /* 状态 */
     uint8_t  m_state;
+
+    // int16_t m_Iq;
+    // int16_t m_Id;
+
     int16_t  m_location;
     int16_t  m_location_target;
+
     float    m_speed;
     float    m_speed_target;
+
     int16_t  m_elect_angle;
     int16_t  m_elect_angle_zero;
+
     int16_t  m_rela_location_zero;
     int16_t  m_max_location;
     int16_t  m_min_location;
     int8_t   m_location_target_state;
+
     uint8_t  m_per_count;
     uint16_t m_check_wire_count;
     float    m_elect_angle_analog;
@@ -124,10 +137,9 @@ private:
     uint16_t m_ua, m_ub, m_uc;
     bool     m_wire_swapped;
 
-    /* 电流反馈 */
-    float    m_i_a_fb, m_i_b_fb, m_i_c_fb;
-    float    m_i_alpha_fb, m_i_beta_fb;
-    float    m_i_q_fb, m_i_d_fb;
+    /* 电流反馈 (Q15) */
+    int16_t  m_i_alpha_q15, m_i_beta_q15;
+    int16_t  m_i_q_q15, m_i_d_q15;
     float    m_i_q_ref, m_i_d_ref;
     int16_t  m_adc_zero_a, m_adc_zero_b;
 
@@ -152,12 +164,13 @@ private:
     void elect_angle_zero_calibration();
     void check_wire();
 
+    void current_handle();
     void set_volt(int16_t ua, int16_t ub, int16_t uc);
     void inv_park_clark_q15(int16_t angle);
     void svpwm_calculate();
     void move(int16_t angle);
 
-    void current_clarke();
+    void current_clarke(int16_t i_a, int16_t i_b);
     void current_park();
     void current_pi_loop();
     void speed_pid_loop();
@@ -175,6 +188,7 @@ private:
     }
 
     static constexpr float    SQRT_3         = 0.8660254f;
+    static constexpr int16_t  INV_SQRT3_Q15  = 18919;   // 1/√3 × 32767
     static constexpr int16_t  VOLTAGE_Q15_MAX = 32767;
     static constexpr int16_t  VOLTAGE_Q15_MIN = -32768;
     static constexpr int32_t  Q16             = 65536;

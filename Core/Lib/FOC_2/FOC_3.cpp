@@ -19,6 +19,7 @@ extern "C" {
 
 FOC_3::FOC_3(const Config &cfg)
     : m_encoder(cfg.encoder),
+      m_get_current(cfg.get_current),
       m_htim_pwm(cfg.htim_pwm),
       m_htim_ctrl(cfg.htim_ctrl),
       m_pole_pairs(cfg.pole_pairs),
@@ -46,9 +47,8 @@ FOC_3::FOC_3(const Config &cfg)
       m_u_alpha(0), m_u_beta(0),
       m_ua(0), m_ub(0), m_uc(0),
       m_wire_swapped(false),
-      m_i_a_fb(0.0f), m_i_b_fb(0.0f), m_i_c_fb(0.0f),
-      m_i_alpha_fb(0.0f), m_i_beta_fb(0.0f),
-      m_i_q_fb(0.0f), m_i_d_fb(0.0f),
+      m_i_alpha_q15(0), m_i_beta_q15(0),
+      m_i_q_q15(0), m_i_d_q15(0),
       m_i_q_ref(0.0f), m_i_d_ref(0.0f),
       m_adc_zero_a(2048), m_adc_zero_b(2048)
 {
@@ -133,6 +133,19 @@ void FOC_3::elect_angle_analog(float rad_s) {
 }
 
 /* ========================================================================== */
+/*                      电流输入 & 坐标变换                                      */
+/* ========================================================================== */
+void FOC_3::current_handle() {
+    int16_t i_a, i_b;
+    m_get_current(&i_a, &i_b);
+
+    current_clarke(i_a, i_b);
+    current_park();
+    current_pi_loop();
+}
+
+
+/* ========================================================================== */
 /*                      电压输出 & 坐标变换                                      */
 /* ========================================================================== */
 
@@ -174,32 +187,34 @@ void FOC_3::move(int16_t angle) {
 }
 
 /* ========================================================================== */
-/*                      电流环                                                  */
+/*                      电流环 (Q15)                                            */
 /* ========================================================================== */
 
-void FOC_3::current_clarke() {
-    float a = (float)((int16_t)I_Check_Get_M1_A());
-    float b = (float)((int16_t)I_Check_Get_M1_B());
+void FOC_3::current_clarke(int16_t i_a, int16_t i_b) {
+    /* ADC raw ±2048 → Q15: ×16 */
+    int32_t ia_q15 = (int32_t)i_a * 16;
+    int32_t ib_q15 = (int32_t)i_b * 16;
 
-    m_i_alpha_fb = a;
-    m_i_beta_fb  = (a + 2.0f * b) * 0.57735027f;
+    m_i_alpha_q15 = (int16_t)ia_q15;
+    m_i_beta_q15  = (int16_t)(((ia_q15 + 2 * ib_q15) * INV_SQRT3_Q15) >> 15);
 }
 
 void FOC_3::current_park() {
-    float cos_t = (float)m_cos_table[m_elect_angle] / Q15_SCALE;
-    float sin_t = (float)m_sin_table[m_elect_angle] / Q15_SCALE;
+    int16_t cos_t = m_cos_table[m_elect_angle];
+    int16_t sin_t = m_sin_table[m_elect_angle];
 
-    m_i_d_fb =  m_i_alpha_fb * cos_t + m_i_beta_fb * sin_t;
-    m_i_q_fb = -m_i_alpha_fb * sin_t + m_i_beta_fb * cos_t;
+    m_i_q_q15 = (int16_t)((int32_t)-mul_q15(m_i_alpha_q15, sin_t) + mul_q15(m_i_beta_q15, cos_t));
+    m_i_d_q15 = (int16_t)((int32_t) mul_q15(m_i_alpha_q15, cos_t) + mul_q15(m_i_beta_q15, sin_t));
 }
 
 void FOC_3::current_pi_loop() {
+    /* Q15 → float (÷16 恢复到 ADC 单位范围) */
     m_current_q_obj.Target = m_i_q_ref;
-    m_current_q_obj.Actual = m_i_q_fb;
+    m_current_q_obj.Actual = (float)m_i_q_q15 / 16.0f;
     m_uq = (int16_t)PID_Calculate(m_current_q_pid, &m_current_q_obj);
 
     m_current_d_obj.Target = 0.0f;
-    m_current_d_obj.Actual = m_i_d_fb;
+    m_current_d_obj.Actual = (float)m_i_d_q15 / 16.0f;
     m_ud = (int16_t)PID_Calculate(m_current_d_pid, &m_current_d_obj);
 }
 
@@ -247,6 +262,7 @@ void FOC_3::direct_location_pid() {
 void FOC_3::period() {
     m_location = m_encoder->refresh_raw();
     elect_angle_from_encoder();
+    int16_t m_i_a, m_i_b;
 
     m_per_count++;
     if (m_per_count >= 30) {
@@ -272,9 +288,7 @@ void FOC_3::period() {
         move(m_elect_angle);
     }
     else if (m_state == 3 || m_state == 4 || m_state == 5) {
-        current_clarke();
-        current_park();
-        current_pi_loop();
+        current_handle();
         move(m_elect_angle);
     }
 
@@ -324,17 +338,61 @@ void FOC_3::error_handle() {
 
 void FOC_3::parse_keyvalue(const char *key, float val)
 {
-    if (strcmp(key, "iq") == 0) {
-        m_uq = (int16_t)val;          /* 电流 Q15 */
+    if (strcmp(key, "M_debug") == 0) {
+        motorID_debug = (uint8_t)val;
     }
-    else if (strcmp(key, "speed") == 0) {
-        m_speed_target = val;          /* 速度闭环目标 (RPM) */
-    }
-    else if (strcmp(key, "drag") == 0) {
-        m_speed_target = val;          /* 开环拖拽速度 */
-    }
-    else if (strcmp(key, "pos") == 0) {
-        m_location_target = (int16_t)val;  /* 位置目标 (14-bit) */
+    FOC_3 *m = instances[motorID_debug];
+    {
+        if (strcmp(key, "iq") == 0) {
+            m_uq = (int16_t)val;          /* 电流 Q15 */
+        }
+        else if (strcmp(key, "speed") == 0) {
+            m_speed_target = val;          /* 速度闭环目标 (RPM) */
+        }
+        else if (strcmp(key, "drag") == 0) {
+            m_speed_target = val;          /* 开环拖拽速度 */
+        }
+        else if (strcmp(key, "pos") == 0) {
+            m_location_target = (int16_t)val;  /* 位置目标 (14-bit) */
+        }
+        /* 选择 PID 环: M_pid:0~4 */
+        else if (strcmp(key, "M_pid") == 0) {
+            pid_debug = (uint8_t)val;
+        }
+        /* 调参 kp/ki/kd — 作用于选中的 PID */
+        else if (strcmp(key, "kp") == 0) {
+            control_PID *pid = nullptr;
+            switch (pid_debug) {
+                case 0: pid = m_current_q_pid; break;
+                case 1: pid = m_current_d_pid; break;
+                case 2: pid = m_speed_pid;     break;
+                case 3: pid = m_location_pid;  break;
+                case 4: pid = m_direct_pid;    break;
+            }
+            if (pid) pid->kp = val;
+        }
+        else if (strcmp(key, "ki") == 0) {
+            control_PID *pid = nullptr;
+            switch (pid_debug) {
+                case 0: pid = m_current_q_pid; break;
+                case 1: pid = m_current_d_pid; break;
+                case 2: pid = m_speed_pid;     break;
+                case 3: pid = m_location_pid;  break;
+                case 4: pid = m_direct_pid;    break;
+            }
+            if (pid) pid->ki = val;
+        }
+        else if (strcmp(key, "kd") == 0) {
+            control_PID *pid = nullptr;
+            switch (pid_debug) {
+                case 0: pid = m_current_q_pid; break;
+                case 1: pid = m_current_d_pid; break;
+                case 2: pid = m_speed_pid;     break;
+                case 3: pid = m_location_pid;  break;
+                case 4: pid = m_direct_pid;    break;
+            }
+            if (pid) pid->kd = val;
+        }
     }
 }
 
@@ -342,6 +400,8 @@ void FOC_3::parse_keyvalue(const char *key, float val)
 
 
 
+
+uint8_t FOC_3::pid_debug = 0;
 
 static FOC_3 *g_foc3_default = nullptr;
 

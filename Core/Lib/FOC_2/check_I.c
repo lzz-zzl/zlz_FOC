@@ -199,7 +199,6 @@ static void adc_init(void)
 void I_Check_HalfCplt_Handler(void)
 {
     s_active_half = 1;
-
     s_m1_a = (int16_t)s_dma_buf[I_CHECK_M1_A] - s_off_m1_a;
     s_m1_b = (int16_t)s_dma_buf[I_CHECK_M1_B] - s_off_m1_b;
     s_m2_a = (int16_t)s_dma_buf[I_CHECK_M2_A] - s_off_m2_a;
@@ -297,8 +296,17 @@ void I_Check_Calibrate(uint16_t n)
 
 int16_t I_Check_Get_M1_A(void)      { return s_m1_a; }
 int16_t I_Check_Get_M1_B(void)      { return s_m1_b; }
+void I_check_M1(int16_t* m1a,int16_t *m1b) {
+    *m1a = s_m1_a;
+    *m1b = s_m1_b;
+}
+
 int16_t I_Check_Get_M2_A(void)      { return s_m2_a; }
 int16_t I_Check_Get_M2_B(void)      { return s_m2_b; }
+void I_check_M2(int16_t* m2a,int16_t *m2b) {
+    *m2a = s_m2_a;
+    *m2b = s_m2_b;
+}
 
 int16_t I_Check_Get_Offset_M1_A(void)  { return s_off_m1_a; }
 int16_t I_Check_Get_Offset_M1_B(void)  { return s_off_m1_b; }

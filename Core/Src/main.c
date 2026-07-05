@@ -93,6 +93,13 @@ void HAL_ADC_ConvHalfCpltCallback(ADC_HandleTypeDef* hadc)
   if(hadc->Instance == ADC1)
   {
     I_Check_HalfCplt_Handler();
+    static int adc_count = 0;
+    adc_count++;
+    if (adc_count >= 7500) {
+      // HAL_GPIO_TogglePin(GPIOE, GPIO_PIN_10);
+      Serial_Printf("count");
+      adc_count = 0;
+    }
   }
 }
 
