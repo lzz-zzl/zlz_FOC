@@ -10,7 +10,6 @@
 #include "stm32f4xx_hal.h"
 #include "MT6701.h"
 #include "Control.h"
-#include <cstdint>
 
 class FOC_3 {
 public:
@@ -47,6 +46,7 @@ public:
     void init(const PIDCtrl &pid);
     void period();              // 15kHz ISR 调用
     void error_handle();        // FOC_task 中调用
+    static void Motors_period();
 
     /* ---------- 状态控制 ---------- */
     void     set_state(uint8_t s)      { m_state = s; }
@@ -208,7 +208,8 @@ private:
 extern "C" {
 #endif
 
-void FOC_3_parse_keyValue(const char *key, float val);
+    void FOC_3_period();
+    void FOC_3_parse_keyValue(const char *key, float val);
 
 #ifdef __cplusplus
 }

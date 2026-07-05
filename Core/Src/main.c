@@ -31,7 +31,7 @@
 /* USER CODE BEGIN Includes */
 #include "OLED.h"
 #include "MT6816.h"
-#include "FOC_1.h"
+// #include "FOC_3.h"
 #include "Serial.h"
 #include "app_task.h"
 #include "check_I.h"
@@ -95,9 +95,9 @@ void HAL_ADC_ConvHalfCpltCallback(ADC_HandleTypeDef* hadc)
     I_Check_HalfCplt_Handler();
     static int adc_count = 0;
     adc_count++;
-    if (adc_count >= 7500) {
+    if (adc_count >= 75000) {
       // HAL_GPIO_TogglePin(GPIOE, GPIO_PIN_10);
-      Serial_Printf("count");
+      // Serial_SendVar("count",1);
       adc_count = 0;
     }
   }
@@ -316,7 +316,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
       FOC_count++;
       tim3_count = 0;
     }
-    FOC_period();
+    // FOC_period();
     HAL_GPIO_WritePin(GPIOC, GPIO_PIN_4  , GPIO_PIN_SET);
 
     // __HAL_TIM_SetCompare(&htim1, TIM_CHANNEL_3, 500);

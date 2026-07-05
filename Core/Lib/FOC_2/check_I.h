@@ -22,7 +22,7 @@
 #define I_CHECK_M2_A     2       /*                    电机2 相A (IN8) */
 #define I_CHECK_M2_B     1       /*                    电机2 相B (IN7) — 硬件实际接 PA7 */
 
-#define I_CHECK_CH_NUM   4       /* 序列通道数 */
+#define I_CHECK_CH_NUM   2       /* 序列通道数 */
 #define I_CHECK_BUF_LEN  (I_CHECK_CH_NUM * 2)   /* ping-pong 双缓冲长度 */
 
 /* ========================================================================== */

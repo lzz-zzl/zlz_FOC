@@ -280,6 +280,3 @@ void Task_Serial_Process(void){ /* removed — serial process moved to SerialTas
 void App_Task(void* argument) { /* deprecated — tasks created in App_Task_Create */ }
 void App_Task_Create(void)    { CreateTasks(); }
 
-extern "C"{
-    FOC_3_pri
-}

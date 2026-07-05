@@ -404,8 +404,16 @@ void FOC_3::parse_keyvalue(const char *key, float val)
     }
 }
 
-void FOC_3_period() {
+void FOC_3::Motors_period() {
+    for (uint8_t i = 0; i < 16; i++) {
+        if (instances[i]) {
+            instances[i]->period();
+        }
+    }
+}
 
+void FOC_3_period() {
+    FOC_3::Motors_period();
 }
 
 void FOC_3_parse_keyValue(const char *key, float val) {
