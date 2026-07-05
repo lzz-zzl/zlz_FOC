@@ -17,6 +17,9 @@ extern "C" {
 /* ========================================================================== */
 /*                      构造函数                                                */
 /* ========================================================================== */
+FOC_3* FOC_3::instances[16] = {nullptr};
+uint8_t FOC_3::motorID_debug = 0;          // 初始化为 0
+uint8_t FOC_3::pid_debug = 0;              // 初始化为 0
 
 FOC_3::FOC_3(const Config &cfg)
     : m_encoder(cfg.encoder),
@@ -53,6 +56,7 @@ FOC_3::FOC_3(const Config &cfg)
       m_i_q_ref(0.0f), m_i_d_ref(0.0f),
       m_adc_zero_a(2048), m_adc_zero_b(2048)
 {
+    instances[cfg.id] = this;
     for (auto &v : m_sin_table) v = 0;
     for (auto &v : m_cos_table) v = 0;
 }
@@ -338,8 +342,11 @@ void FOC_3::error_handle() {
 /*                  串口命令解析 (VOFA+ 键值对)                                */
 /* ========================================================================== */
 
-void FOC_3::parse_keyvalue(const char *key, float val)
+void FOC_3::parse_keyValue(char * cmd)
 {
+    char *key = strtok(cmd, " ,=");  // 支持空格、逗号、等号分隔
+    char *val_str = strtok(NULL, " ,=");
+    float val = atof(val_str);
     if (strcmp(key, "M_debug") == 0) {
         motorID_debug = (uint8_t)val;
     }
@@ -412,11 +419,11 @@ void FOC_3::Motors_period() {
     }
 }
 
-void FOC_3_period() {
+extern "C" void FOC_3_period() {
     FOC_3::Motors_period();
 }
 
-void FOC_3_parse_keyValue(const char *key, float val) {
-    FOC_3::parse_keyvalue(key,val);
+void FOC_3_parse_keyValue(char * cmd) {
+    FOC_3::parse_keyValue(cmd);
 }
 

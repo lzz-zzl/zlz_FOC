@@ -5,7 +5,7 @@
 #include "stm32f4xx_hal.h"
 #include "Control.h"
 
-
+extern char kv_buf[64];
 
 extern osSemaphoreId_t uart_sem;
 

@@ -18,6 +18,9 @@ public:
     static uint8_t motorID_list[16];
     static uint8_t pid_debug;        /* 0=cur_q, 1=cur_d, 2=speed, 3=location, 4=direct */
 
+
+    uint8_t  m_per_count;
+
     struct Config {
         MT6701            *encoder;
         void (*get_current)(int16_t *i_a, int16_t *i_b);
@@ -78,6 +81,9 @@ public:
     uint16_t get_ub() const { return m_ub; }
     uint16_t get_uc() const { return m_uc; }
 
+    float    get_iq_ref()  const { return m_i_q_ref; }
+    int16_t  get_iq_q15()  const { return m_i_q_q15; }
+
     /* ---------- PID 访问 (指针, 可能为 nullptr) ---------- */
     control_PID *speed_pid()             { return m_speed_pid; }
     control_PID *location_pid()          { return m_location_pid; }
@@ -90,7 +96,7 @@ public:
     void elect_angle_from_encoder();
 
     /* 串口命令解析 (VOFA+ 键值对) */
-    static void parse_keyvalue(const char *key, float val);
+    static void parse_keyValue(char * cmd);
     static void ParseCmd(const char *key, float val);  /* 使用默认实例 */
 
 private:
@@ -126,7 +132,6 @@ private:
     int16_t  m_min_location;
     int8_t   m_location_target_state;
 
-    uint8_t  m_per_count;
     uint16_t m_check_wire_count;
     float    m_elect_angle_analog;
     int16_t  m_start_angle;
@@ -209,7 +214,7 @@ extern "C" {
 #endif
 
     void FOC_3_period();
-    void FOC_3_parse_keyValue(const char *key, float val);
+    void FOC_3_parse_keyValue(char * cmd);
 
 #ifdef __cplusplus
 }

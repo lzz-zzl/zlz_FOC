@@ -31,7 +31,6 @@
 /* USER CODE BEGIN Includes */
 #include "OLED.h"
 #include "MT6816.h"
-// #include "FOC_3.h"
 #include "Serial.h"
 #include "app_task.h"
 #include "check_I.h"
@@ -64,7 +63,7 @@ uint8_t uart6_rx_buf[256];
 void SystemClock_Config(void);
 void MX_FREERTOS_Init(void);
 /* USER CODE BEGIN PFP */
-
+void FOC_3_period(void);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -107,7 +106,8 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc)
 {
   if(hadc->Instance == ADC1)
   {
-    I_Check_Cplt_Handler();
+    // I_Check_Cplt_Handler();
+    // FOC_3_period();
   }
 }
 

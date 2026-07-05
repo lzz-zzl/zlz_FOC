@@ -74,26 +74,39 @@ static void FOC_3_test_task(void* argument);
 static void OLEDTaskFunc(void* /*argument*/) {
     OLED_Init();
     for (;;) {
-        OLED_ShowNum(1, 1, FOC_count, 5);
 
-        OLED_ShowNum(3,7 , FOC_location, 3);
-        OLED_ShowNum(1, 12, FOC_GET_state(), 3);
-        OLED_ShowNum(2, 1, FOC_GET_elect_angle(), 3);
-        OLED_ShowNum(2, 7, FOC_GET_elect_angle_zero(), 5);
+        FOC_3 *m = FOC_3::instances[FOC_3::motorID_debug];
+        if (m) {
+            OLED_ShowNum(1, 1, m->m_per_count, 5);          /* 累计帧计数 — 保留 */
+            /* 行1: M0 st:3 spd:1500 */
+            OLED_ShowString(1, 8, "M");
+            OLED_ShowNum(1, 10, m->get_id(), 1);
+            OLED_ShowString(1, 12, "S");
+            OLED_ShowNum(1, 14, m->get_state(), 2);
 
-        int16_t temp1,temp2;
+            /* 行2: ang:123 loc:4000 */
+            OLED_ShowString(2, 1, "AG");
+            OLED_ShowNum(2, 4, m->get_elect_angle(), 3);
+            OLED_ShowString(2, 8, "LO");
+            OLED_ShowNum(2, 11, m->get_location(), 5);
 
-        // OLED_ShowHexNum(3,1,*temp_rxdata6,2);
-        // OLED_ShowHexNum(3,4,JY61P_GetFrameCount(),2);
+            /* 行3: IqR:800 Iq:780 */
+            OLED_ShowString(3, 1, "QR");
+            OLED_ShowNum(3, 4, (int16_t)m->get_iq_ref(), 4);
+            OLED_ShowString(3, 9, "Q");
+            OLED_ShowNum(3, 11, m->get_iq_q15() / 16, 4);
 
-        // JY61P_GetAccelRaw (&temp1,&temp1,&temp2);
-        // Serial_SendVar("gx",temp2);
-        // OLED_ShowNum(4,1,temp1,5);
-        // OLED_ShowNum(4,7,temp2,5);
-        int16_t ia = I_Check_Get_M1_A();
-        int16_t ib = I_Check_Get_M1_B();
-        OLED_ShowSignedNum(4, 1, ia, 5);
-        OLED_ShowSignedNum(4, 8, ib, 5);
+            /* 行4: Ia:+123 Ib:-045 */
+            int16_t ia = I_Check_Get_M1_A();
+            int16_t ib = I_Check_Get_M1_B();
+            OLED_ShowSignedNum(4, 1, ia, 5);
+            OLED_ShowSignedNum(4, 8, ib, 5);
+        } else {
+            OLED_ShowString(1, 8, "no motor");
+            static uint8_t count = 0;
+            count++;
+            OLED_ShowNum(2,8, count,3);
+        }
 
         osDelay(100);
     }
@@ -141,6 +154,8 @@ static void TIM1_PWM_test(void* /*argument*/) {
 }
 
 static void FOC_3_test_task(void* /*argument*/) {
+
+    Serial_Init();
     /* 创建 PID */
     static control_PID speed_pid, loc_pid, curq_pid, curd_pid, direct_pid;
 
@@ -160,13 +175,14 @@ static void FOC_3_test_task(void* /*argument*/) {
     p.current_d = &curd_pid;
 
     static MT6701 enc({&hspi1, GPIOD, GPIO_PIN_7});
-    static FOC_3 motor({&enc,I_check_M1, &htim1, &htim5, 11, 12.0f, 7.5f, 1.7f,01,"pitch"});
+    static FOC_3 motor({&enc,I_check_M1, &htim1, &htim5, 11, 12.0f, 7.5f, 1.7f, 0, "motor1"});
     motor.init(p);
 
     for (;;) {
-
+        osSemaphoreAcquire(uart_sem, osWaitForever);
+        FOC_3_parse_keyValue(kv_buf);
         motor.error_handle();
-        osDelay(50);
+        // osDelay(10);
     }
 }
 
@@ -233,7 +249,7 @@ static void task_printf(void * /*argument*/) {
         // temp[2] = ia2*0.001;
         // temp[3] = ib2*0.001;
 
-        // Serial_JustFloat(temp,3);
+        Serial_JustFloat(temp,3);
         osDelay(1);
     }
 }
@@ -251,14 +267,14 @@ static void CreateTasks() {
     };
 
     constexpr TaskDef tasks[] = {
-        { "SerialTask",  &SerialTaskFunc,  config::SERIAL_STACK_SIZE, config::SERIAL_PRIORITY },
+        // { "SerialTask",  &SerialTaskFunc,  config::SERIAL_STACK_SIZE, config::SERIAL_PRIORITY },
         { "OLED_Task",   &OLEDTaskFunc,    config::OLED_STACK_SIZE,   40 },
         // { "FOC_Task",    &FOCTaskFunc,     config::FOC_STACK_SIZE,    config::FOC_PRIORITY },
-        { "task_printf", &task_printf,  config::MT6701_STACK_SIZE, 44 },
+        { "task_printf", &task_printf,  256 * 4 , 44 },
         // { "JY61P_Test",  &JY61PTestTask,   256 * 4,                  30 },
 
         { "TIM1_test",   &TIM1_PWM_test,       256 * 4,                  40 },
-        // { "FOC_3_test_task",    &FOC_3_test_task,     config::FOC_STACK_SIZE,    config::FOC_PRIORITY },
+        { "FOC_3_test_task",    &FOC_3_test_task,     1024*4,    config::FOC_PRIORITY },
     };
 
     for (const auto& t : tasks) {

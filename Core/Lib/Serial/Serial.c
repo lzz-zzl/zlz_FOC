@@ -278,8 +278,64 @@ void Serial_Printf(char *format, ...)
 	Serial_SendString(String);
 }
 
+void receive_state1() {
+	static uint8_t RxState_1 = 0;    // 接收状态机
+	static uint8_t pRxPacket_1 = 0;  // 缓存指针
+
+	static uint8_t RxState_2 = 0;    // 接收状态机
+	static uint8_t pRxPacket_2 = 0;  // 缓存指针
 
 
+	uint8_t RxData;
+	RxData = temp_rxdata1;
+	// 状态机解析：[数据] 格式
+	if (RxState_1 == 0)
+	{
+		// 起始符检测：'[' 且未处于接收中
+		if (RxData == '[' && Serial_RxFlag == 0)
+		{
+			RxState_1 = 1;
+			pRxPacket_1 = 0;  // 重置缓存指针
+		}
+	}
+	else if (RxState_1 == 1)
+	{
+		// 结束符检测：']'
+		if (RxData == ']')
+		{
+			RxState_1 = 0;
+			Serial_RxPacket[pRxPacket_1] = '\0';  // 字符串结束符
+			Serial_RxFlag = 1;                  // 接收完成置位
+			osSemaphoreRelease(uart_sem);
+		}
+		else
+		{
+			// 防止缓存溢出
+			if(pRxPacket_1 < 100 - 1)
+			{
+				Serial_RxPacket[pRxPacket_1] = RxData;
+				pRxPacket_1++;
+			}
+		}
+	}
+}
+
+char kv_buf[64];
+static uint8_t kv_len = 0;
+volatile uint8_t kv_ready = 0;
+
+void receive_state_keyVal(uint8_t data) {
+		if (data == '\n') {
+			kv_buf[kv_len] = '\0';
+		kv_ready = 1;
+		kv_len = 0;
+		osSemaphoreRelease(uart_sem);
+		return;
+	}
+	if (kv_len < sizeof(kv_buf) - 1) {
+		kv_buf[kv_len++] = (char)data;
+	}
+}
 
 
 
@@ -297,37 +353,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
 
 	if(huart->Instance == USART1 )
 	{
-		RxData = temp_rxdata1;
-		// 状态机解析：[数据] 格式
-		if (RxState_1 == 0)
-		{
-			// 起始符检测：'[' 且未处于接收中
-			if (RxData == '[' && Serial_RxFlag == 0)
-			{
-				RxState_1 = 1;
-				pRxPacket_1 = 0;  // 重置缓存指针
-			}
-		}
-		else if (RxState_1 == 1)
-		{
-			// 结束符检测：']'
-			if (RxData == ']')
-			{
-				RxState_1 = 0;
-				Serial_RxPacket[pRxPacket_1] = '\0';  // 字符串结束符
-				Serial_RxFlag = 1;                  // 接收完成置位
-				osSemaphoreRelease(uart_sem);
-			}
-			else
-			{
-				// 防止缓存溢出
-				if(pRxPacket_1 < 100 - 1)
-				{
-					Serial_RxPacket[pRxPacket_1] = RxData;
-					pRxPacket_1++;
-				}
-			}
-		}
+		receive_state_keyVal(temp_rxdata1);
 		if(huart->Instance == USART1) HAL_UART_Receive_IT(&huart1, &temp_rxdata1, 1);
 	}
 	else if(huart->Instance == USART2 )
