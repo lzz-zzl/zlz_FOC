@@ -11,6 +11,7 @@
 
 extern "C" {
 #include "check_I.h"
+#include "Serial.h"
 }
 
 /* ========================================================================== */
@@ -261,7 +262,8 @@ void FOC_3::direct_location_pid() {
 
 void FOC_3::period() {
     m_location = m_encoder->refresh_raw();
-    elect_angle_from_encoder();
+    // elect_angle_from_encoder();
+    current_handle();
     int16_t m_i_a, m_i_b;
 
     m_per_count++;
@@ -344,16 +346,16 @@ void FOC_3::parse_keyvalue(const char *key, float val)
     FOC_3 *m = instances[motorID_debug];
     {
         if (strcmp(key, "iq") == 0) {
-            m_uq = (int16_t)val;          /* 电流 Q15 */
+            m->m_uq = (int16_t)val;          /* 电流 Q15 */
         }
         else if (strcmp(key, "speed") == 0) {
-            m_speed_target = val;          /* 速度闭环目标 (RPM) */
+            m->m_speed_target = val;          /* 速度闭环目标 (RPM) */
         }
         else if (strcmp(key, "drag") == 0) {
-            m_speed_target = val;          /* 开环拖拽速度 */
+            m->m_speed_target = val;          /* 开环拖拽速度 */
         }
         else if (strcmp(key, "pos") == 0) {
-            m_location_target = (int16_t)val;  /* 位置目标 (14-bit) */
+            m->m_location_target = (int16_t)val;  /* 位置目标 (14-bit) */
         }
         /* 选择 PID 环: M_pid:0~4 */
         else if (strcmp(key, "M_pid") == 0) {
@@ -363,69 +365,50 @@ void FOC_3::parse_keyvalue(const char *key, float val)
         else if (strcmp(key, "kp") == 0) {
             control_PID *pid = nullptr;
             switch (pid_debug) {
-                case 0: pid = m_current_q_pid; break;
-                case 1: pid = m_current_d_pid; break;
-                case 2: pid = m_speed_pid;     break;
-                case 3: pid = m_location_pid;  break;
-                case 4: pid = m_direct_pid;    break;
+                case 0: pid = m->m_current_q_pid; break;
+                case 1: pid = m->m_current_d_pid; break;
+                case 2: pid = m->m_speed_pid;     break;
+                case 3: pid = m->m_location_pid;  break;
+                case 4: pid = m->m_direct_pid;    break;
             }
             if (pid) pid->kp = val;
+            Serial_SendVar("pid",pid_debug);
+            Serial_SendVar("kp", pid->kp);
         }
         else if (strcmp(key, "ki") == 0) {
             control_PID *pid = nullptr;
             switch (pid_debug) {
-                case 0: pid = m_current_q_pid; break;
-                case 1: pid = m_current_d_pid; break;
-                case 2: pid = m_speed_pid;     break;
-                case 3: pid = m_location_pid;  break;
-                case 4: pid = m_direct_pid;    break;
+                case 0: pid = m->m_current_q_pid; break;
+                case 1: pid = m->m_current_d_pid; break;
+                case 2: pid = m->m_speed_pid;     break;
+                case 3: pid = m->m_location_pid;  break;
+                case 4: pid = m->m_direct_pid;    break;
             }
             if (pid) pid->ki = val;
+            Serial_SendVar("pid",pid_debug);
+            Serial_SendVar("ki", pid->ki);
         }
         else if (strcmp(key, "kd") == 0) {
             control_PID *pid = nullptr;
             switch (pid_debug) {
-                case 0: pid = m_current_q_pid; break;
-                case 1: pid = m_current_d_pid; break;
-                case 2: pid = m_speed_pid;     break;
-                case 3: pid = m_location_pid;  break;
-                case 4: pid = m_direct_pid;    break;
+                case 0: pid = m->m_current_q_pid; break;
+                case 1: pid = m->m_current_d_pid; break;
+                case 2: pid = m->m_speed_pid;     break;
+                case 3: pid = m->m_location_pid;  break;
+                case 4: pid = m->m_direct_pid;    break;
             }
             if (pid) pid->kd = val;
+            Serial_SendVar("pid",pid_debug);
+            Serial_SendVar("kd", pid->kd);
         }
     }
 }
 
-#include "spi.h"
+void FOC_3_period() {
 
+}
 
-
-
-uint8_t FOC_3::pid_debug = 0;
-
-static FOC_3 *g_foc3_default = nullptr;
-
-// FOC_3 *FOC_3_Init(void) {
-//     static MT6701 s_enc({&hspi1, GPIOD, GPIO_PIN_7});
-//     static FOC_3 s_foc((FOC_3::Config){
-//         &s_enc,
-//         &htim1,
-//         &htim5,
-//         11,         // pole_pairs
-//         12.0f,      // u_bus
-//         7.5f,       // r_wire
-//         1.7f        // i_max
-//     });
-//     g_foc3_default = &s_foc;
-//     s_foc.init({});  /* 暂不绑定 PID，后续外部调用 set_xxx 或解析命令 */
-//     return &s_foc;
-// }
-
-
-void FOC_3_ParseCmd(const char *key, float val)
-{
-    if (g_foc3_default) {
-        g_foc3_default->parse_keyvalue(key, val);
-    }
+void FOC_3_parse_keyValue(const char *key, float val) {
+    FOC_3::parse_keyvalue(key,val);
 }
 

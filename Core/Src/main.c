@@ -160,6 +160,7 @@ int main(void)
   MX_UART4_Init();
   MX_USART3_UART_Init();
   MX_USART6_UART_Init();
+  MX_TIM6_Init();
   /* USER CODE BEGIN 2 */
   HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, GPIO_PIN_SET);
 

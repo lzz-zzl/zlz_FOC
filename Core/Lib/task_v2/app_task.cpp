@@ -106,7 +106,8 @@ static void SerialTaskFunc(void* /*argument*/) {
     for (;;) {
         osSemaphoreAcquire(uart_sem, osWaitForever);
 
-        Serial_GET_order();
+        // Serial_GET_order();
+
 
         static uint16_t serial_count = 0;
         serial_count++;
@@ -163,6 +164,7 @@ static void FOC_3_test_task(void* /*argument*/) {
     motor.init(p);
 
     for (;;) {
+
         motor.error_handle();
         osDelay(50);
     }
@@ -277,3 +279,7 @@ void Task_OLED_Update(void)   { /* removed — OLED update moved to OLEDTaskFunc
 void Task_Serial_Process(void){ /* removed — serial process moved to SerialTaskFunc */ }
 void App_Task(void* argument) { /* deprecated — tasks created in App_Task_Create */ }
 void App_Task_Create(void)    { CreateTasks(); }
+
+extern "C"{
+    FOC_3_pri
+}

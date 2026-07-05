@@ -90,7 +90,7 @@ public:
     void elect_angle_from_encoder();
 
     /* 串口命令解析 (VOFA+ 键值对) */
-    void parse_keyvalue(const char *key, float val);
+    static void parse_keyvalue(const char *key, float val);
     static void ParseCmd(const char *key, float val);  /* 使用默认实例 */
 
 private:
@@ -204,7 +204,19 @@ private:
 /* 全局默认实例 (与 FOC_2 同一套硬件) */
 // FOC_3 *FOC_3_Init(void);
 
-/* 串口命令解析 (VOFA+ 键值对) — 作用于默认实例 */
-void FOC_3_ParseCmd(const char *key, float val);
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+void FOC_3_parse_keyValue(const char *key, float val);
+
+#ifdef __cplusplus
+}
+#endif
+
+
+
+
+
 
 #endif // TI_FOC_FOC_3_H
