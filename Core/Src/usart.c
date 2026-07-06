@@ -22,8 +22,9 @@
 
 /* USER CODE BEGIN 0 */
 
-/* USART1 TX DMA 句柄 (非 static, 供 stm32f4xx_it.c 引用) */
+/* USART1 TX/RX DMA 句柄 */
 DMA_HandleTypeDef hdma_usart1_tx;
+DMA_HandleTypeDef hdma_usart1_rx;
 
 /* USART6 RX DMA 句柄 */
 DMA_HandleTypeDef hdma_usart6_rx;
@@ -254,7 +255,25 @@ void HAL_UART_MspInit(UART_HandleTypeDef* uartHandle)
     HAL_NVIC_EnableIRQ(USART1_IRQn);
   /* USER CODE BEGIN USART1_MspInit 1 */
 
-  /* DMA 配置已由 CubeMX 生成 (上方), 此处不再重复 */
+  /* USART1_RX DMA Init — DMA2_Stream2, Channel 4, NORMAL + IDLE */
+  hdma_usart1_rx.Instance                 = DMA2_Stream2;
+  hdma_usart1_rx.Init.Channel             = DMA_CHANNEL_4;
+  hdma_usart1_rx.Init.Direction           = DMA_PERIPH_TO_MEMORY;
+  hdma_usart1_rx.Init.PeriphInc           = DMA_PINC_DISABLE;
+  hdma_usart1_rx.Init.MemInc              = DMA_MINC_ENABLE;
+  hdma_usart1_rx.Init.PeriphDataAlignment = DMA_PDATAALIGN_BYTE;
+  hdma_usart1_rx.Init.MemDataAlignment    = DMA_MDATAALIGN_BYTE;
+  hdma_usart1_rx.Init.Mode                = DMA_NORMAL;
+  hdma_usart1_rx.Init.Priority            = DMA_PRIORITY_HIGH;
+  hdma_usart1_rx.Init.FIFOMode            = DMA_FIFOMODE_DISABLE;
+  if (HAL_DMA_Init(&hdma_usart1_rx) != HAL_OK)
+      Error_Handler();
+
+  __HAL_LINKDMA(uartHandle, hdmarx, hdma_usart1_rx);
+
+  HAL_NVIC_SetPriority(DMA2_Stream2_IRQn, 5, 0);
+  HAL_NVIC_EnableIRQ(DMA2_Stream2_IRQn);
+
   /* USER CODE END USART1_MspInit 1 */
   }
   else if(uartHandle->Instance==USART2)
@@ -397,6 +416,7 @@ void HAL_UART_MspDeInit(UART_HandleTypeDef* uartHandle)
 
     /* USART1 DMA DeInit */
     HAL_DMA_DeInit(uartHandle->hdmatx);
+    HAL_DMA_DeInit(uartHandle->hdmarx);
 
     /* USART1 interrupt Deinit */
     HAL_NVIC_DisableIRQ(USART1_IRQn);

@@ -39,12 +39,16 @@ uint8_t Serial_RxFlag2;
 
 uint8_t temp_rxdata6[11];
 
+/* USART1 DMA+IDLE 接收缓冲 */
+#define UART1_RX_BUF_SIZE  64
+static uint8_t uart1_rx_buf[UART1_RX_BUF_SIZE];
+
 void Serial_Init(void)
 {
 	/* USART1/2 已在 main.c 中由 MX_USARTx_UART_Init() 初始化, 不再重复调用 */
-	HAL_UART_Receive_IT(&huart1, &temp_rxdata1, 1);
+	HAL_UARTEx_ReceiveToIdle_DMA(&huart1, uart1_rx_buf, UART1_RX_BUF_SIZE);
+	__HAL_UART_CLEAR_IDLEFLAG(&huart1);
 	HAL_UART_Receive_IT(&huart2, &temp_rxdata2, 1);
-	// HAL_UART_Receive_IT(&huart6, temp_rxdata6, 1);
 	uart_sem = osSemaphoreNew(1, 0, NULL);  // 最大计数1, 初始可用0
 }
 
@@ -325,9 +329,9 @@ static uint8_t kv_len = 0;
 volatile uint8_t kv_ready = 0;
 
 void receive_state_keyVal(uint8_t data) {
-	// if (data == '\r') return;
+	if (data == '\r') return;
 	if (data == '\n') {
-			kv_buf[kv_len] = '\0';
+		kv_buf[kv_len] = '\0';
 		kv_ready = 1;
 		kv_len = 0;
 		osSemaphoreRelease(uart_sem);
@@ -338,26 +342,34 @@ void receive_state_keyVal(uint8_t data) {
 	}
 }
 
+/**
+  * @brief  USART1 DMA+IDLE 接收完成回调
+  *         收到数据或总线空闲时触发，逐字节喂给状态机
+  */
+void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size)
+{
+    if (huart->Instance == USART1) {
+        for (uint16_t i = 0; i < Size; i++) {
+            receive_state_keyVal(uart1_rx_buf[i]);
+        }
+        HAL_UARTEx_ReceiveToIdle_DMA(&huart1, uart1_rx_buf, UART1_RX_BUF_SIZE);
+    }
+}
 
 
 
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
-	static uint8_t RxState_1 = 0;    // 接收状态机
-	static uint8_t pRxPacket_1 = 0;  // 缓存指针
-
-	static uint8_t RxState_2 = 0;    // 接收状态机
-	static uint8_t pRxPacket_2 = 0;  // 缓存指针
-
+	/* USART1 由 DMA+IDLE 接管, 此处仅重启 DMA(当缓冲收满时) */
+	if (huart->Instance == USART1) {
+		HAL_UARTEx_ReceiveToIdle_DMA(&huart1, uart1_rx_buf, UART1_RX_BUF_SIZE);
+		return;
+	}
 
 	uint8_t RxData;
 
-
-	if(huart->Instance == USART1 )
-	{
-		receive_state_keyVal(temp_rxdata1);
-		if(huart->Instance == USART1) HAL_UART_Receive_IT(&huart1, &temp_rxdata1, 1);
-	}
-	else if(huart->Instance == USART2 )
+	static uint8_t RxState_2 = 0;
+	static uint8_t pRxPacket_2 = 0;
+	if(huart->Instance == USART2 )
 	{
 		RxData = temp_rxdata2;
 		// 状态机解析：[数据] 格式
