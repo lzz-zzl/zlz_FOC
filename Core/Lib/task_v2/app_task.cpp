@@ -100,10 +100,7 @@ static void OLEDTaskFunc(void* /*argument*/) {
             OLED_ShowNum(2, 11, m->get_location(), 5);
 
             /* 行3: IqR:800 Iq:780 */
-            OLED_ShowString(3, 1, "QR");
-            OLED_ShowNum(3, 4, (int16_t)m->get_iq_ref(), 4);
-            OLED_ShowString(3, 9, "Q");
-            OLED_ShowNum(3, 11, m->get_iq_q15() / 16, 4);
+            OLED_ShowSignedNum(3, 1, m->get_iq_q15() / 16, 4);
 
             /* 行4: Ia:+123 Ib:-045 */
             OLED_ShowSignedNum(4, 1, m->get_iq_q15(), 5);

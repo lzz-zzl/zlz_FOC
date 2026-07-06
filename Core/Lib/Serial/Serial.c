@@ -325,7 +325,8 @@ static uint8_t kv_len = 0;
 volatile uint8_t kv_ready = 0;
 
 void receive_state_keyVal(uint8_t data) {
-		if (data == '\n') {
+	// if (data == '\r') return;
+	if (data == '\n') {
 			kv_buf[kv_len] = '\0';
 		kv_ready = 1;
 		kv_len = 0;

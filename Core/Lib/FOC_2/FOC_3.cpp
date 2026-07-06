@@ -266,8 +266,8 @@ void FOC_3::direct_location_pid() {
 
 void FOC_3::period() {
     m_location = m_encoder->refresh_raw();
-    // elect_angle_from_encoder();
-    // current_handle();
+    elect_angle_from_encoder();
+    current_handle();
     int16_t m_i_a, m_i_b;
 
     m_per_count++;
@@ -344,8 +344,8 @@ void FOC_3::error_handle() {
 
 void FOC_3::parse_keyValue(char * cmd)
 {
-    char *key = strtok(cmd, " :");  // 支持空格、逗号、等号分隔
-    char *val_str = strtok(NULL, " :");
+    char *key = strtok(cmd, ":");  // 支持空格、逗号、等号分隔
+    char *val_str = strtok(NULL, ":");
     float val = atof(val_str);
     if (strcmp(key, "M_debug") == 0) {
         motorID_debug = (uint8_t)val;
