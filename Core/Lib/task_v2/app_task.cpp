@@ -19,6 +19,11 @@ extern "C" {
 #include "tim.h"
 }
 
+
+//test
+extern uint16_t tim5_count;
+extern uint16_t adc_dma_count;
+
 #include <cstdint>
 #include "FOC_3.h"
 #include "Control.h"
@@ -102,14 +107,14 @@ static void OLEDTaskFunc(void* /*argument*/) {
 
             /* 行4: Ia:+123 Ib:-045 */
             OLED_ShowSignedNum(4, 1, m->get_iq_q15(), 5);
-            OLED_ShowNum(4, 11,FOC_3::pid_debug, 3);
+            OLED_ShowNum(4, 8,adc_dma_count, 3);
+            OLED_ShowNum(4, 13,FOC_3::pid_debug, 3);
         } else {
             OLED_ShowString(1, 8, "no motor");
             static uint8_t count = 0;
             count++;
             OLED_ShowNum(2,8, count,3);
         }
-
         osDelay(50);
     }
 }

@@ -87,6 +87,8 @@ uint16_t FOC_count =0;
 
 float GZ;
 
+uint16_t adc_dma_count;
+
 void HAL_ADC_ConvHalfCpltCallback(ADC_HandleTypeDef* hadc)
 {
   if(hadc->Instance == ADC1)
@@ -94,9 +96,10 @@ void HAL_ADC_ConvHalfCpltCallback(ADC_HandleTypeDef* hadc)
     I_Check_HalfCplt_Handler();
     static int adc_count = 0;
     adc_count++;
-    if (adc_count >= 75000) {
+    if (adc_count >= 7500) {
       // HAL_GPIO_TogglePin(GPIOE, GPIO_PIN_10);
       // Serial_SendVar("count",1);
+      adc_dma_count++;
       adc_count = 0;
     }
   }
@@ -109,9 +112,10 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc)
     // I_Check_Cplt_Handler();
     FOC_3_period();
   }
+
 }
 
-
+uint16_t tim5_count =0;
 /* USER CODE END 0 */
 
 /**
@@ -150,7 +154,7 @@ int main(void)
   MX_I2C3_Init();
   MX_SPI1_Init();
   MX_SPI2_Init();
-  // MX_TIM1_Init();
+  MX_TIM1_Init();
   MX_TIM2_Init();
   MX_TIM5_Init();
   MX_USART1_UART_Init();
@@ -313,6 +317,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
     static uint16_t tim3_count =0;
     tim3_count++;
     if (tim3_count > 15000) {
+    tim5_count++;
       FOC_count++;
       tim3_count = 0;
     }

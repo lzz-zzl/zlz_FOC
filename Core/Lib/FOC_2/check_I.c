@@ -135,7 +135,7 @@ static void adc_tim5_trigger_init(void)
 
     /* CH1: PWM1, Pulse=Period/2, 每个周期产生 OC1REF 翻转 */
     oc.OCMode     = TIM_OCMODE_PWM1;
-    oc.Pulse      = htim5.Init.Period / 2;
+    oc.Pulse      = 1;
     oc.OCPolarity = TIM_OCPOLARITY_HIGH;
     oc.OCFastMode = TIM_OCFAST_DISABLE;
     if (HAL_TIM_PWM_ConfigChannel(&htim5, &oc, TIM_CHANNEL_1) != HAL_OK)
