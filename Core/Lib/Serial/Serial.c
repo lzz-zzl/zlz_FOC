@@ -44,7 +44,7 @@ void Serial_Init(void)
 	/* USART1/2 已在 main.c 中由 MX_USARTx_UART_Init() 初始化, 不再重复调用 */
 	HAL_UART_Receive_IT(&huart1, &temp_rxdata1, 1);
 	HAL_UART_Receive_IT(&huart2, &temp_rxdata2, 1);
-	HAL_UART_Receive_IT(&huart6, temp_rxdata6, 1);
+	// HAL_UART_Receive_IT(&huart6, temp_rxdata6, 1);
 	uart_sem = osSemaphoreNew(1, 0, NULL);  // 最大计数1, 初始可用0
 }
 

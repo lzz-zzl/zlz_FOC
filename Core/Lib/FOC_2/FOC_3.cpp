@@ -265,7 +265,7 @@ void FOC_3::direct_location_pid() {
 /* ========================================================================== */
 
 void FOC_3::period() {
-    // m_location = m_encoder->refresh_raw();
+    m_location = m_encoder->refresh_raw();
     // elect_angle_from_encoder();
     // current_handle();
     int16_t m_i_a, m_i_b;
@@ -344,15 +344,19 @@ void FOC_3::error_handle() {
 
 void FOC_3::parse_keyValue(char * cmd)
 {
-    char *key = strtok(cmd, " ,=");  // 支持空格、逗号、等号分隔
-    char *val_str = strtok(NULL, " ,=");
+    char *key = strtok(cmd, " :");  // 支持空格、逗号、等号分隔
+    char *val_str = strtok(NULL, " :");
     float val = atof(val_str);
     if (strcmp(key, "M_debug") == 0) {
         motorID_debug = (uint8_t)val;
     }
     FOC_3 *m = instances[motorID_debug];
     {
-        if (strcmp(key, "iq") == 0) {
+        /* 选择 PID 环: M_pid:0~4 */
+        if (strcmp(key, "M_pid") == 0) {
+            pid_debug = (uint8_t)val;
+        }
+        else if (strcmp(key, "iq") == 0) {
             m->m_uq = (int16_t)val;          /* 电流 Q15 */
         }
         else if (strcmp(key, "speed") == 0) {
@@ -363,10 +367,6 @@ void FOC_3::parse_keyValue(char * cmd)
         }
         else if (strcmp(key, "pos") == 0) {
             m->m_location_target = (int16_t)val;  /* 位置目标 (14-bit) */
-        }
-        /* 选择 PID 环: M_pid:0~4 */
-        else if (strcmp(key, "M_pid") == 0) {
-            pid_debug = (uint8_t)val;
         }
         /* 调参 kp/ki/kd — 作用于选中的 PID */
         else if (strcmp(key, "kp") == 0) {

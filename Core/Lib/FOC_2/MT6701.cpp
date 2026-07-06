@@ -112,7 +112,7 @@ int16_t MT6701::ssi_read_angle() {
     cs_deassert();
 
     /* T_CS: CS 高后保持至少 ~3 µs 再允许下次读取 */
-    delay_us(3);
+    // delay_us(3);
 
     /* 角度提取:
      *   rx[15]   = START (同步位, 恒为 1)

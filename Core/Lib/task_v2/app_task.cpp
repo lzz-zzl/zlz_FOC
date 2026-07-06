@@ -101,10 +101,8 @@ static void OLEDTaskFunc(void* /*argument*/) {
             OLED_ShowNum(3, 11, m->get_iq_q15() / 16, 4);
 
             /* 行4: Ia:+123 Ib:-045 */
-            int16_t ia = I_Check_Get_M1_A();
-            int16_t ib = I_Check_Get_M1_B();
-            OLED_ShowSignedNum(4, 1, ia, 5);
-            OLED_ShowSignedNum(4, 8, ib, 5);
+            OLED_ShowSignedNum(4, 1, m->get_iq_q15(), 5);
+            OLED_ShowNum(4, 11,FOC_3::pid_debug, 3);
         } else {
             OLED_ShowString(1, 8, "no motor");
             static uint8_t count = 0;
