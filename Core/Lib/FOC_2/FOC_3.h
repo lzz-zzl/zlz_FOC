@@ -19,7 +19,7 @@ public:
     static uint8_t pid_debug;        /* 0=cur_q, 1=cur_d, 2=speed, 3=location, 4=direct */
 
 
-    uint8_t  m_per_count;
+    uint32_t  m_per_count;
 
     struct Config {
         MT6701            *encoder;

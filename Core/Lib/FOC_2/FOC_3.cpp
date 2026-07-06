@@ -95,7 +95,7 @@ void FOC_3::init(const PIDCtrl &pid) {
     elect_angle_zero_calibration();
     set_volt(0, 0, 0);
 
-    HAL_TIM_Base_Start_IT(m_htim_ctrl);
+    HAL_TIM_Base_Start_IT(m_htim_pwm);
 }
 
 /* ========================================================================== */
@@ -265,51 +265,51 @@ void FOC_3::direct_location_pid() {
 /* ========================================================================== */
 
 void FOC_3::period() {
-    m_location = m_encoder->refresh_raw();
+    // m_location = m_encoder->refresh_raw();
     // elect_angle_from_encoder();
-    current_handle();
+    // current_handle();
     int16_t m_i_a, m_i_b;
 
     m_per_count++;
-    if (m_per_count >= 30) {
-        m_per_count = 0;
-        m_speed = m_encoder->calc_speed_rpm_low_pass() / 60.0f;
+    // if (m_per_count >= 30) {
+    //     m_per_count = 0;
+    //     m_speed = m_encoder->calc_speed_rpm_low_pass() / 60.0f;
+    //
+    //     if (m_state == 3) speed_pid_loop();
+    //     if (m_state == 4) location_target_pid();
+    //     if (m_state == 5) direct_location_pid();
+    // }
 
-        if (m_state == 3) speed_pid_loop();
-        if (m_state == 4) location_target_pid();
-        if (m_state == 5) direct_location_pid();
-    }
-
-    if (m_location > m_max_location+100 || m_location < m_min_location-100) {
-        m_i_q_ref = 0; m_uq = 0; m_ud = 0;
-    }
-
-    if (m_state == 1) {
-        elect_angle_analog(m_speed_target);
-        m_ud = 3000;
-        move(m_elect_angle);
-    }
-    else if (m_state == 2) {
-        elect_angle_from_encoder();
-        move(m_elect_angle);
-    }
-    else if (m_state == 3 || m_state == 4 || m_state == 5) {
-        current_handle();
-        move(m_elect_angle);
-    }
-
-
-    else if (m_state == 111) {
-        m_check_wire_count++;
-        m_uq = 4000; m_ud = 0;
-        elect_angle_from_encoder();
-        move(m_elect_angle);
-        if (m_location - m_start_angle > 500 && m_location - m_start_angle < 3000) m_state = 0;
-        if (m_check_wire_count >= 5000) { m_wire_swapped = true; m_state = 112; m_check_wire_count = 0; }
-    }
-    else if (m_state == 113) {
-        m_uq = 0; m_ud = 0;
-    }
+    // if (m_location > m_max_location+100 || m_location < m_min_location-100) {
+    //     m_i_q_ref = 0; m_uq = 0; m_ud = 0;
+    // }
+    //
+    // if (m_state == 1) {
+    //     elect_angle_analog(m_speed_target);
+    //     m_ud = 3000;
+    //     move(m_elect_angle);
+    // }
+    // else if (m_state == 2) {
+    //     elect_angle_from_encoder();
+    //     move(m_elect_angle);
+    // }
+    // else if (m_state == 3 || m_state == 4 || m_state == 5) {
+    //     current_handle();
+    //     move(m_elect_angle);
+    // }
+    //
+    //
+    // else if (m_state == 111) {
+    //     m_check_wire_count++;
+    //     m_uq = 4000; m_ud = 0;
+    //     elect_angle_from_encoder();
+    //     move(m_elect_angle);
+    //     if (m_location - m_start_angle > 500 && m_location - m_start_angle < 3000) m_state = 0;
+    //     if (m_check_wire_count >= 5000) { m_wire_swapped = true; m_state = 112; m_check_wire_count = 0; }
+    // }
+    // else if (m_state == 113) {
+    //     m_uq = 0; m_ud = 0;
+    // }
 }
 
 /* ========================================================================== */

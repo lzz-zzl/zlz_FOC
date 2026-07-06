@@ -107,7 +107,7 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc)
   if(hadc->Instance == ADC1)
   {
     // I_Check_Cplt_Handler();
-    // FOC_3_period();
+    FOC_3_period();
   }
 }
 
@@ -150,7 +150,7 @@ int main(void)
   MX_I2C3_Init();
   MX_SPI1_Init();
   MX_SPI2_Init();
-  MX_TIM1_Init();
+  // MX_TIM1_Init();
   MX_TIM2_Init();
   MX_TIM5_Init();
   MX_USART1_UART_Init();

@@ -77,9 +77,13 @@ static void OLEDTaskFunc(void* /*argument*/) {
 
         FOC_3 *m = FOC_3::instances[FOC_3::motorID_debug];
         if (m) {
-            OLED_ShowNum(1, 1, m->m_per_count, 5);          /* 累计帧计数 — 保留 */
+            static uint8_t count = 0;
+            count++;
+            OLED_ShowNum(1,1,count,3);
+
+            OLED_ShowNum(1, 5, m->m_per_count/15000, 3);          /* 累计帧计数 — 保留 */
             /* 行1: M0 st:3 spd:1500 */
-            OLED_ShowString(1, 8, "M");
+            OLED_ShowString(1, 9, "M");
             OLED_ShowNum(1, 10, m->get_id(), 1);
             OLED_ShowString(1, 12, "S");
             OLED_ShowNum(1, 14, m->get_state(), 2);
@@ -108,7 +112,7 @@ static void OLEDTaskFunc(void* /*argument*/) {
             OLED_ShowNum(2,8, count,3);
         }
 
-        osDelay(100);
+        osDelay(50);
     }
 }
 
@@ -139,19 +143,6 @@ static void SerialTaskFunc(void* /*argument*/) {
 
 
 
-
-static void TIM1_PWM_test(void* /*argument*/) {
-    osDelay(100);
-    // HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1);
-    // HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_2);
-    // HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_3);
-
-    // __HAL_TIM_SetCompare(&htim1, TIM_CHANNEL_1, 350);  // ~50%
-    // __HAL_TIM_SetCompare(&htim1, TIM_CHANNEL_2, 350);
-    // __HAL_TIM_SetCompare(&htim1, TIM_CHANNEL_3, 350);
-
-    for (;;) osDelay(1000);
-}
 
 static void FOC_3_test_task(void* /*argument*/) {
 
@@ -186,15 +177,6 @@ static void FOC_3_test_task(void* /*argument*/) {
     }
 }
 
-static void FOCTaskFunc(void* /*argument*/) {
-    FOC_Init();
-    for (;;) {
-        FOC_error_handle();
-        // Serial_Printf("[plot,%d,%d,%d]\r\n", FOC_Ua, FOC_Ub, FOC_Uc);
-
-        osDelay(50);
-    }
-}
 
 static void MT6701TaskFunc(void* /*argument*/) {
     osDelay(10);
@@ -270,11 +252,9 @@ static void CreateTasks() {
         // { "SerialTask",  &SerialTaskFunc,  config::SERIAL_STACK_SIZE, config::SERIAL_PRIORITY },
         { "OLED_Task",   &OLEDTaskFunc,    config::OLED_STACK_SIZE,   40 },
         // { "FOC_Task",    &FOCTaskFunc,     config::FOC_STACK_SIZE,    config::FOC_PRIORITY },
-        { "task_printf", &task_printf,  256 * 4 , 44 },
+        // { "task_printf", &task_printf,  256 * 4 , 40 },
         // { "JY61P_Test",  &JY61PTestTask,   256 * 4,                  30 },
-
-        { "TIM1_test",   &TIM1_PWM_test,       256 * 4,                  40 },
-        { "FOC_3_test_task",    &FOC_3_test_task,     1024*4,    config::FOC_PRIORITY },
+        { "FOC_3_test_task",    &FOC_3_test_task,     512*4,    45 },
     };
 
     for (const auto& t : tasks) {
