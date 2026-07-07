@@ -184,8 +184,9 @@ void FOC_3::inv_park_clark_q15(int16_t angle) {
     int16_t cos_t = m_cos_table[angle];
     int16_t sin_t = m_sin_table[angle];
 
-    m_u_alpha = (mul_q15(-m_uq, cos_t) - mul_q15(m_ud, sin_t));
-    m_u_beta  = (mul_q15(-m_uq, sin_t) + mul_q15(m_ud, cos_t));
+    /* 逆 Park: V_alpha = Ud*cos - Uq*sin,  V_beta = Ud*sin + Uq*cos */
+    m_u_alpha = mul_q15(m_ud, cos_t) - mul_q15(m_uq, sin_t);
+    m_u_beta  = mul_q15(m_ud, sin_t) + mul_q15(m_uq, cos_t);
 
     static const int16_t sqrt3_q15 = (int16_t)(SQRT_3 * Q15_SCALE);
     static const int16_t half_q15  = Q15_SCALE / 2;
@@ -226,23 +227,27 @@ void FOC_3::current_clarke(int16_t i_a, int16_t i_b) {
     m_i_beta_q15  = (int16_t)(((ia_q15 + 2 * ib_q15) * INV_SQRT3_Q15) >> 15);
 }
 
+
+int16_t test_i_q,test_i_d;
 void FOC_3::current_park() {
     int16_t cos_t = m_cos_table[m_elect_angle];
     int16_t sin_t = m_sin_table[m_elect_angle];
 
-    m_i_q_target = (int16_t)((int32_t)-mul_q15(m_i_alpha_q15, sin_t) + mul_q15(m_i_beta_q15, cos_t));
-    m_i_d_target = (int16_t)((int32_t) mul_q15(m_i_alpha_q15, cos_t) + mul_q15(m_i_beta_q15, sin_t));
+    m_i_q_q15 = (int16_t)((int32_t)-mul_q15(m_i_alpha_q15, sin_t) + mul_q15(m_i_beta_q15, cos_t));
+    m_i_d_q15 = (int16_t)((int32_t) mul_q15(m_i_alpha_q15, cos_t) + mul_q15(m_i_beta_q15, sin_t));
+    test_i_q = m_i_q_q15;
+    test_i_d = m_i_d_q15;
 }
 
 void FOC_3::current_pi_loop() {
     /* Q15 → float (÷16 恢复到 ADC 单位范围) */
-    m_current_q_obj.Target = m_i_q_ref;
-    m_current_q_obj.Actual = (float)m_i_q_target / 16.0f;
-    m_uq = (int16_t)PID_Calculate(m_current_q_pid, &m_current_q_obj);
+    m_current_q_obj.Target = m_i_q_target;
+    m_current_q_obj.Actual = (float)m_i_q_q15 / 16.0f;
+    // m_uq = (int16_t)PID_Calculate(m_current_q_pid, &m_current_q_obj);
 
     m_current_d_obj.Target = 0.0f;
-    m_current_d_obj.Actual = (float)m_i_d_target / 16.0f;
-    m_ud = (int16_t)PID_Calculate(m_current_d_pid, &m_current_d_obj);
+    m_current_d_obj.Actual = (float)m_i_d_q15 / 16.0f;
+    // m_ud = (int16_t)PID_Calculate(m_current_d_pid, &m_current_d_obj);
 }
 
 /* ========================================================================== */
@@ -289,7 +294,7 @@ void FOC_3::direct_location_pid() {
 void FOC_3::period() {
     m_location = m_encoder->refresh_raw();
     elect_angle_from_encoder();
-    // current_handle();
+    current_handle();
     int16_t m_i_a, m_i_b;
     m_per_count++;
 
@@ -314,7 +319,7 @@ void FOC_3::period() {
         elect_angle_from_encoder();
 
         elect_angle_analog(m_speed_analog);
-        m_ud = 6000;
+        // m_ud = 6000;
         m_uq = 0;
         move(m_elect_angle_A);
     }
@@ -391,6 +396,8 @@ void FOC_3::parse_keyValue(char * cmd)
         else if (strcmp(key, "Uq") == 0) {
             m->m_state = 2;
             m->m_uq = (int16_t)val;          /* 电流 Q15 */
+        } else if (strcmp(key, "Ud") == 0) {
+            m->m_ud = (int16_t)val;          /* 电流 Q15 */
         }
         else if (strcmp(key, "Iq") == 0) {
             m->m_i_q_target = (int16_t)val;          /* 电流 Q15 */

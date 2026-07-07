@@ -216,6 +216,9 @@ static void JY61PTestTask(void* /*argument*/) {
 extern int16_t test_u_a;
 extern int16_t test_u_b;
 extern int16_t test_u_c;
+extern int16_t test_i_d;
+extern int16_t test_i_q;
+
 
 static void task_printf(void * /*argument*/) {
     osDelay(10);
@@ -229,11 +232,10 @@ static void task_printf(void * /*argument*/) {
         // int16_t ib2 = I_Check_Get_M2_B();
 
         float temp[4];
-        temp[0] = FOC_3::instances[0]->get_elect_angle_A() *0.001;
-        temp[1] = FOC_3::instances[0]->get_elect_angle() *0.001;
-        // temp[0] = test_u_a*0.001;
-        // temp[1] = test_u_b*0.001;
-        // temp[2] = test_u_c*0.001;;
+        // temp[0] = FOC_3::instances[0]->get_elect_angle_A() *0.001;
+        // temp[1] = FOC_3::instances[0]->get_elect_angle() *0.001;
+        temp[0] = test_i_d*0.001;
+        temp[1] = test_i_q*0.001;
         // temp[0] = ia*0.001;
         // temp[1] = ib*0.001;
 

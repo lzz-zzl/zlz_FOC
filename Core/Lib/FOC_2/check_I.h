@@ -18,9 +18,9 @@
 
 /* ADC1 序列 (Rank):  1=IN6  2=IN7  3=IN8  4=IN9 */
 #define I_CHECK_M1_A     0       /* s_dma_buf[] 偏移: 电机1 相A (IN6) */
-#define I_CHECK_M1_B     3       /*                    电机1 相B (IN9) — 硬件实际接 PB1 */
+#define I_CHECK_M1_B     1       /*                    电机1 相B (IN9) — 硬件实际接 PB1 */
 #define I_CHECK_M2_A     2       /*                    电机2 相A (IN8) */
-#define I_CHECK_M2_B     1       /*                    电机2 相B (IN7) — 硬件实际接 PA7 */
+#define I_CHECK_M2_B     3       /*                    电机2 相B (IN7) — 硬件实际接 PA7 */
 
 #define I_CHECK_CH_NUM   4       /* 序列通道数 */
 #define I_CHECK_BUF_LEN  (I_CHECK_CH_NUM * 2)   /* ping-pong 双缓冲长度 */
