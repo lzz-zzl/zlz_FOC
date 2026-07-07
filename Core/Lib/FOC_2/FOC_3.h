@@ -72,6 +72,7 @@ public:
 
     /* ---------- 只读 ---------- */
     uint16_t get_elect_angle() const { return (uint16_t)m_elect_angle; }
+    uint16_t get_elect_angle_A() const { return (uint16_t)m_elect_angle_A; }
     int16_t  get_location()    const { return m_location; }
     float    get_speed()       const { return m_speed; }
     int32_t  get_rotation_count() const { return m_encoder->get_rotation_count(); }
@@ -118,6 +119,7 @@ private:
     // int16_t m_Iq;
     // int16_t m_Id;
     int16_t  m_elect_angle;
+    int16_t  m_elect_angle_A;
     int16_t  m_elect_angle_zero;
 
     uint16_t m_check_wire_count;

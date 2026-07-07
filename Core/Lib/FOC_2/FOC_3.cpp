@@ -147,7 +147,7 @@ void FOC_3::elect_angle_analog(float rad_s) {
     m_elect_angle_analog += rad_s * (float)m_pole_pairs * 360.0f / 15000.0f;
     if (m_elect_angle_analog >= 360.0f) m_elect_angle_analog -= 360.0f;
     if (m_elect_angle_analog < 0.0f)    m_elect_angle_analog += 360.0f;
-    m_elect_angle = (int16_t)m_elect_angle_analog;
+    m_elect_angle_A = (int16_t)m_elect_angle_analog;
 }
 
 /* ========================================================================== */
@@ -284,7 +284,7 @@ void FOC_3::direct_location_pid() {
 void FOC_3::period() {
     m_location = m_encoder->refresh_raw();
     elect_angle_from_encoder();
-    current_handle();
+    // current_handle();
     int16_t m_i_a, m_i_b;
     m_per_count++;
 
@@ -306,9 +306,12 @@ void FOC_3::period() {
     // }
     //
     if (m_state == 1) {
+        elect_angle_from_encoder();
+
         elect_angle_analog(m_speed_analog);
-        m_ud = 3000;
-        move(m_elect_angle);
+        m_ud = 6000;
+        m_uq = 0;
+        move(m_elect_angle_A);
     }
     else if (m_state == 2) {
         m_ud = 0;
