@@ -103,7 +103,7 @@ static void OLEDTaskFunc(void* /*argument*/) {
             OLED_ShowSignedNum(3, 1, m->get_iq_q15() / 16, 4);
 
             /* 行4: Ia:+123 Ib:-045 */
-            OLED_ShowSignedNum(4, 1, m->get_iq_q15(), 5);
+            OLED_ShowNum(4, 1, m->get_elect_angle_zero(), 5);
             OLED_ShowNum(4, 8,adc_dma_count, 3);
             OLED_ShowNum(4, 13,FOC_3::pid_debug, 3);
         } else {
@@ -234,8 +234,8 @@ static void task_printf(void * /*argument*/) {
         // temp[0] = test_u_a*0.001;
         // temp[1] = test_u_b*0.001;
         // temp[2] = test_u_c*0.001;;
-        // temp[2] = ia2*0.001;
-        // temp[3] = ib2*0.001;
+        // temp[0] = ia*0.001;
+        // temp[1] = ib*0.001;
 
         Serial_JustFloat(temp,2);
         osDelay(1);

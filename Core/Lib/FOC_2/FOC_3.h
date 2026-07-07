@@ -120,7 +120,7 @@ private:
     // int16_t m_Id;
     int16_t  m_elect_angle;
     int16_t  m_elect_angle_A;
-    int16_t  m_elect_angle_zero;
+    int16_t  m_elect_angle_zero = 0;
 
     uint16_t m_check_wire_count;
     float    m_elect_angle_analog;

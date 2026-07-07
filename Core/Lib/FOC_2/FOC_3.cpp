@@ -113,20 +113,25 @@ void FOC_3::init(const PIDCtrl &pid) {
 
 void FOC_3::elect_angle_zero_calibration() {
     HAL_TIM_Base_Stop_IT(m_htim_pwm);
+
     m_enable();
     m_state = 1;
     m_ud = 3000;
     m_uq = 0;
     move(0);
-    osDelay(1000);
+    osDelay(300);
     m_elect_angle_zero = m_encoder->refresh_raw();
+    while (m_elect_angle_zero == 16383) {
     m_elect_angle_zero = m_encoder->refresh_raw();
+    }
     m_uq = 0;
     m_ud = 0;
     set_volt(0, 0, 0);
     m_state = 0;
     m_enable();
     HAL_TIM_Base_Start_IT(m_htim_pwm);
+    int16_t before = m_encoder->refresh_raw();  // 使能前读一次
+    Serial_SendVar("before", before);
 }
 
 /* ========================================================================== */
