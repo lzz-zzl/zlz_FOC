@@ -117,36 +117,42 @@ private:
 
     // int16_t m_Iq;
     // int16_t m_Id;
-
-    int16_t  m_location;
-    int16_t  m_location_target;
-
-    float    m_speed;
-    float    m_speed_target;
-
     int16_t  m_elect_angle;
     int16_t  m_elect_angle_zero;
 
+    uint16_t m_check_wire_count;
+    float    m_elect_angle_analog;
+    int16_t  m_start_angle;
+
+    int16_t  m_location;
+    int16_t  m_location_target;
     int16_t  m_rela_location_zero;
     int16_t  m_max_location;
     int16_t  m_min_location;
     int8_t   m_location_target_state;
 
-    uint16_t m_check_wire_count;
-    float    m_elect_angle_analog;
-    int16_t  m_start_angle;
+    float    m_speed;
+    float    m_speed_target;
+    float    m_speed_limit;
+
+    float     m_speed_analog;
+
+    int16_t  m_i_q_q15, m_i_d_q15;
+    int16_t  m_i_q_target, m_i_d_target;
+
+
+
+    /* 电流反馈 (Q15) */
+    int16_t  m_i_a, m_i_b;
+    int16_t  m_i_alpha_q15, m_i_beta_q15;
+    float    m_i_q_ref, m_i_d_ref;
+    int16_t  m_adc_zero_a, m_adc_zero_b;
 
     /* PWM 电压 (Q15) */
     int16_t  m_uq, m_ud;
     int16_t  m_u_alpha, m_u_beta;
     uint16_t m_ua, m_ub, m_uc;
     bool     m_wire_swapped;
-
-    /* 电流反馈 (Q15) */
-    int16_t  m_i_alpha_q15, m_i_beta_q15;
-    int16_t  m_i_q_q15, m_i_d_q15;
-    float    m_i_q_ref, m_i_d_ref;
-    int16_t  m_adc_zero_a, m_adc_zero_b;
 
     /* PID (外部指针, 传入后绑定) */
     control_PID    *m_speed_pid     = nullptr;
@@ -165,6 +171,9 @@ private:
     inline static bool if_tableInit = false;
 
     /* 内部方法 */
+    static void m_enable();
+    static void m_disable();
+
     void table_init();
     void elect_angle_zero_calibration();
     void check_wire();

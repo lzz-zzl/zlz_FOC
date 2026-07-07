@@ -213,6 +213,10 @@ static void JY61PTestTask(void* /*argument*/) {
     }
 }
 
+extern int16_t test_u_a;
+extern int16_t test_u_b;
+extern int16_t test_u_c;
+
 static void task_printf(void * /*argument*/) {
     osDelay(10);
     for (;;) {
@@ -225,9 +229,9 @@ static void task_printf(void * /*argument*/) {
         // int16_t ib2 = I_Check_Get_M2_B();
 
         float temp[4];
-        temp[0] = ia*0.001;
-        temp[1] = ib*0.001;
-        temp[2] = -1*temp[0]-temp[1];
+        temp[0] = test_u_a*0.001;
+        temp[1] = test_u_b*0.001;
+        temp[2] = test_u_c*0.001;;
         // temp[2] = ia2*0.001;
         // temp[3] = ib2*0.001;
 
@@ -252,7 +256,7 @@ static void CreateTasks() {
         // { "SerialTask",  &SerialTaskFunc,  config::SERIAL_STACK_SIZE, config::SERIAL_PRIORITY },
         { "OLED_Task",   &OLEDTaskFunc,    config::OLED_STACK_SIZE,   40 },
         // { "FOC_Task",    &FOCTaskFunc,     config::FOC_STACK_SIZE,    config::FOC_PRIORITY },
-        // { "task_printf", &task_printf,  256 * 4 , 40 },
+        { "task_printf", &task_printf,  256 * 4 , 40 },
         // { "JY61P_Test",  &JY61PTestTask,   256 * 4,                  30 },
         { "FOC_3_test_task",    &FOC_3_test_task,     512*4,    45 },
     };

@@ -14,6 +14,9 @@ extern "C" {
 #include "Serial.h"
 }
 
+#define M_ENABLE HAL_GPIO_WritePin(GPIOE,GPIO_PIN_10,GPIO_PIN_SET);
+#define M_DISABLE HAL_GPIO_WritePin(GPIOE,GPIO_PIN_10,GPIO_PIN_RESET);
+
 /* ========================================================================== */
 /*                      构造函数                                                */
 /* ========================================================================== */
@@ -52,7 +55,7 @@ FOC_3::FOC_3(const Config &cfg)
       m_ua(0), m_ub(0), m_uc(0),
       m_wire_swapped(false),
       m_i_alpha_q15(0), m_i_beta_q15(0),
-      m_i_q_q15(0), m_i_d_q15(0),
+      m_i_q_target(0), m_i_d_target(0),
       m_i_q_ref(0.0f), m_i_d_ref(0.0f),
       m_adc_zero_a(2048), m_adc_zero_b(2048)
 {
@@ -64,6 +67,12 @@ FOC_3::FOC_3(const Config &cfg)
 /* ========================================================================== */
 /*                      初始化                                                  */
 /* ========================================================================== */
+void FOC_3::m_enable() {
+    M_ENABLE ;
+}
+void FOC_3::m_disable() {
+    M_DISABLE ;
+}
 
 void FOC_3::table_init() {
     if (if_tableInit == false) {
@@ -103,7 +112,9 @@ void FOC_3::init(const PIDCtrl &pid) {
 /* ========================================================================== */
 
 void FOC_3::elect_angle_zero_calibration() {
-    HAL_TIM_Base_Stop_IT(m_htim_ctrl);
+    HAL_TIM_Base_Stop_IT(m_htim_pwm);
+    m_enable();
+    m_state = 1;
     m_ud = 3000;
     m_uq = 0;
     move(0);
@@ -113,7 +124,9 @@ void FOC_3::elect_angle_zero_calibration() {
     m_uq = 0;
     m_ud = 0;
     set_volt(0, 0, 0);
-    HAL_TIM_Base_Start_IT(m_htim_ctrl);
+    m_state = 0;
+    m_enable();
+    HAL_TIM_Base_Start_IT(m_htim_pwm);
 }
 
 /* ========================================================================== */
@@ -141,10 +154,9 @@ void FOC_3::elect_angle_analog(float rad_s) {
 /*                      电流输入 & 坐标变换                                      */
 /* ========================================================================== */
 void FOC_3::current_handle() {
-    int16_t i_a, i_b;
-    m_get_current(&i_a, &i_b);
+    m_get_current(&m_i_a, &m_i_b);
 
-    current_clarke(i_a, i_b);
+    current_clarke(m_i_a, m_i_b);
     current_park();
     current_pi_loop();
 }
@@ -185,10 +197,15 @@ void FOC_3::svpwm_calculate() {
     m_uc -= u_min;
 }
 
+int16_t test_u_a,test_u_b,test_u_c;
+
 void FOC_3::move(int16_t angle) {
     inv_park_clark_q15(angle);
     svpwm_calculate();
     set_volt(m_ua, m_ub, m_uc);
+    test_u_a = m_ua;
+    test_u_b = m_ub;
+    test_u_c = m_uc;
 }
 
 /* ========================================================================== */
@@ -208,18 +225,18 @@ void FOC_3::current_park() {
     int16_t cos_t = m_cos_table[m_elect_angle];
     int16_t sin_t = m_sin_table[m_elect_angle];
 
-    m_i_q_q15 = (int16_t)((int32_t)-mul_q15(m_i_alpha_q15, sin_t) + mul_q15(m_i_beta_q15, cos_t));
-    m_i_d_q15 = (int16_t)((int32_t) mul_q15(m_i_alpha_q15, cos_t) + mul_q15(m_i_beta_q15, sin_t));
+    m_i_q_target = (int16_t)((int32_t)-mul_q15(m_i_alpha_q15, sin_t) + mul_q15(m_i_beta_q15, cos_t));
+    m_i_d_target = (int16_t)((int32_t) mul_q15(m_i_alpha_q15, cos_t) + mul_q15(m_i_beta_q15, sin_t));
 }
 
 void FOC_3::current_pi_loop() {
     /* Q15 → float (÷16 恢复到 ADC 单位范围) */
     m_current_q_obj.Target = m_i_q_ref;
-    m_current_q_obj.Actual = (float)m_i_q_q15 / 16.0f;
+    m_current_q_obj.Actual = (float)m_i_q_target / 16.0f;
     m_uq = (int16_t)PID_Calculate(m_current_q_pid, &m_current_q_obj);
 
     m_current_d_obj.Target = 0.0f;
-    m_current_d_obj.Actual = (float)m_i_d_q15 / 16.0f;
+    m_current_d_obj.Actual = (float)m_i_d_target / 16.0f;
     m_ud = (int16_t)PID_Calculate(m_current_d_pid, &m_current_d_obj);
 }
 
@@ -269,8 +286,12 @@ void FOC_3::period() {
     elect_angle_from_encoder();
     current_handle();
     int16_t m_i_a, m_i_b;
-
     m_per_count++;
+
+    if (m_state == 0) {
+        m_disable();
+    }
+    else {m_enable();}
     // if (m_per_count >= 30) {
     //     m_per_count = 0;
     //     m_speed = m_encoder->calc_speed_rpm_low_pass() / 60.0f;
@@ -284,15 +305,16 @@ void FOC_3::period() {
     //     m_i_q_ref = 0; m_uq = 0; m_ud = 0;
     // }
     //
-    // if (m_state == 1) {
-    //     elect_angle_analog(m_speed_target);
-    //     m_ud = 3000;
-    //     move(m_elect_angle);
-    // }
-    // else if (m_state == 2) {
-    //     elect_angle_from_encoder();
-    //     move(m_elect_angle);
-    // }
+    if (m_state == 1) {
+        elect_angle_analog(m_speed_analog);
+        m_ud = 3000;
+        move(m_elect_angle);
+    }
+    else if (m_state == 2) {
+        m_ud = 0;
+        elect_angle_from_encoder();
+        move(m_elect_angle);
+    }
     // else if (m_state == 3 || m_state == 4 || m_state == 5) {
     //     current_handle();
     //     move(m_elect_angle);
@@ -355,15 +377,23 @@ void FOC_3::parse_keyValue(char * cmd)
         /* 选择 PID 环: M_pid:0~4 */
         if (strcmp(key, "M_pid") == 0) {
             pid_debug = (uint8_t)val;
+        }else if (strcmp(key, "stop") == 0) {
+            m->m_state = 0;          /* 电流 Q15 */
         }
-        else if (strcmp(key, "iq") == 0) {
+        else if (strcmp(key, "Uq") == 0) {
+            m->m_state = 2;
             m->m_uq = (int16_t)val;          /* 电流 Q15 */
+        }
+        else if (strcmp(key, "Iq") == 0) {
+            m->m_i_q_target = (int16_t)val;          /* 电流 Q15 */
         }
         else if (strcmp(key, "speed") == 0) {
             m->m_speed_target = val;          /* 速度闭环目标 (RPM) */
+            m->m_state = 3;
         }
         else if (strcmp(key, "drag") == 0) {
-            m->m_speed_target = val;          /* 开环拖拽速度 */
+            m->m_speed_analog = val;          /* 开环拖拽速度 */
+            m->m_state = 1;
         }
         else if (strcmp(key, "pos") == 0) {
             m->m_location_target = (int16_t)val;  /* 位置目标 (14-bit) */
