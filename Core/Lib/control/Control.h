@@ -36,6 +36,7 @@ typedef struct {
     float Error_now;
     float Error_pass;
     float Error_calculus;
+    float Error_output;
 
     float OutMax;
     float OutMin;

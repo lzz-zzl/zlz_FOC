@@ -153,8 +153,8 @@ static void FOC_3_test_task(void* /*argument*/) {
     /* 初始化三环 PID 参数 */
     Control_PID_Init(&speed_pid,   1200.0f, 20.0f, 0.0f, -32767.0f, 32767.0f, 10000.0f);
     Control_PID_Init(&loc_pid,     0.02f, 0.000005f, 0.001f, -4.0f, 4.0f, 15.0f);
-    Control_PID_Init(&curq_pid,    0.0f, 0.0f, 0.0f, -32767.0f, 32767.0f, 10000.0f);
-    Control_PID_Init(&curd_pid,    10.0f, 0.6f, 0.0f, -32767.0f, 32767.0f, 10000.0f);
+    Control_PID_Init(&curq_pid,    0.0f, 0.005f, 0.0f, -32767.0f, 32767.0f, 15000);
+    Control_PID_Init(&curd_pid,    10.0f, 0.6f, 0.0f, -32767.0f, 32767.0f, 15000);
     Control_PID_Init(&direct_pid,  15.0f, 0.15f, 50.0f, -32767.0f, 32767.0f, 8000.0f);
 
     /* 创建电机 */
@@ -166,7 +166,7 @@ static void FOC_3_test_task(void* /*argument*/) {
     p.current_d = &curd_pid;
 
     static MT6701 enc({&hspi1, GPIOD, GPIO_PIN_7});
-    static FOC_3 motor({&enc,I_check_M1, &htim1, &htim5, 11, 12.0f, 7.5f, 1.7f, 0, "motor1"});
+    static FOC_3 motor({&enc,I_check_lowpass_M1, &htim1, &htim5, 11, 12.0f, 7.5f, 1.7f, 0, "motor1"});
     motor.init(p);
 
     for (;;) {

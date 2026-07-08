@@ -67,19 +67,18 @@ float PID_Calculate(control_PID *pid, control_object *obj){
     }
 
     pid->Error_now = obj->Target - obj->Actual;
-
     pid->Error_calculus += pid->Error_now;
-
-
-    if (pid->Error_calculus > pid->ErMax) {
-        pid->Error_calculus = pid->ErMax;
-    } else if (pid->Error_calculus < pid->ErMin) {
-        pid->Error_calculus = pid->ErMin;
-    }
-
     if (pid->Er_weaken > 0 && pid->Er_weaken <= 1) {
         pid->Error_calculus *=  pid->Er_weaken;
     }
+    pid->Error_output = pid->ki * pid->Error_calculus ;
+
+    if (pid->Error_output > pid->ErMax &&  pid->ErMax != 0) {
+        pid->Error_output = pid->ErMax;
+    } else if (pid->Error_output < pid->ErMin &&  pid->ErMax != 0) {
+        pid->Error_output = pid->ErMin;
+    }
+
 
     float derivative = pid->Error_now - pid->Error_pass;
 
@@ -88,7 +87,7 @@ float PID_Calculate(control_PID *pid, control_object *obj){
     }
 
     obj->Out = pid->kp * pid->Error_now +
-               pid->ki * pid->Error_calculus +
+               pid->Error_output +
                pid->kd * derivative;
 
     if (obj->Out > pid->OutMax) {

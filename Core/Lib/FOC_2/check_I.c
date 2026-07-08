@@ -301,6 +301,14 @@ void I_check_M1(int16_t* m1a,int16_t *m1b) {
     *m1b = s_m1_b;
 }
 
+#define alpha_10    1
+void I_check_lowpass_M1(int16_t* m1a,int16_t *m1b) {
+    static int16_t m1a_last = 0;
+    static int16_t m1b_last = 0;
+    *m1a = (s_m1_a*alpha_10+m1a_last*(10-alpha_10))/10;
+    *m1b = (s_m1_b*alpha_10+m1b_last*(10-alpha_10))/10;
+}
+
 int16_t I_Check_Get_M2_A(void)      { return s_m2_a; }
 int16_t I_Check_Get_M2_B(void)      { return s_m2_b; }
 void I_check_M2(int16_t* m2a,int16_t *m2b) {

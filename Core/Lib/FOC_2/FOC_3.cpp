@@ -241,11 +241,11 @@ void FOC_3::current_park() {
 void FOC_3::current_pi_loop() {
     /* Q15 → float (÷16 恢复到 ADC 单位范围) */
     m_current_q_obj.Target = m_i_q_target;
-    m_current_q_obj.Actual = (float)m_i_q_q15 / 16.0f;
+    m_current_q_obj.Actual = (float)m_i_q_q15;
     m_uq = (int16_t)PID_Calculate(m_current_q_pid, &m_current_q_obj);
 
     m_current_d_obj.Target = 0.0f;
-    m_current_d_obj.Actual = (float)m_i_d_q15 / 16.0f;
+    m_current_d_obj.Actual = (float)m_i_d_q15;
     m_ud = (int16_t)PID_Calculate(m_current_d_pid, &m_current_d_obj);
 }
 
