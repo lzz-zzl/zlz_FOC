@@ -234,9 +234,10 @@ static void task_printf(void * /*argument*/) {
         float temp[4];
         // temp[0] = FOC_3::instances[0]->get_elect_angle_A() *0.001;
         // temp[1] = FOC_3::instances[0]->get_elect_angle() *0.001;
-        temp[0] = test_i_q*0.001;
-        temp[1] = test_i_d*0.001;
-        // temp[2] = FOC_3::instances[0]->get_iq_target() *0.001;
+        temp[0] = test_i_q;
+        temp[1] = test_i_d;
+        temp[2] = FOC_3::instances[0]->get_iq_target() ;
+        temp[3] = FOC_3::instances[0]->get_uq()*1.0 ;
         // temp[0] = ia*0.001;
         // temp[1] = ib*0.001;
         // temp[2] = test_u_a*0.001;
