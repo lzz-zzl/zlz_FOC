@@ -153,8 +153,8 @@ static void FOC_3_test_task(void* /*argument*/) {
     /* 初始化三环 PID 参数 */
     Control_PID_Init(&speed_pid,   1200.0f, 20.0f, 0.0f, -32767.0f, 32767.0f, 10000.0f);
     Control_PID_Init(&loc_pid,     0.02f, 0.000005f, 0.001f, -4.0f, 4.0f, 15.0f);
-    Control_PID_Init(&curq_pid,    8.0f, 0.1f, 0.0f, -32767.0f, 32767.0f, 10000.0f);
-    Control_PID_Init(&curd_pid,    8.0f, 0.1f, 0.0f, -32767.0f, 32767.0f, 10000.0f);
+    Control_PID_Init(&curq_pid,    0.0f, 0.0f, 0.0f, -32767.0f, 32767.0f, 10000.0f);
+    Control_PID_Init(&curd_pid,    10.0f, 0.6f, 0.0f, -32767.0f, 32767.0f, 10000.0f);
     Control_PID_Init(&direct_pid,  15.0f, 0.15f, 50.0f, -32767.0f, 32767.0f, 8000.0f);
 
     /* 创建电机 */
@@ -234,12 +234,16 @@ static void task_printf(void * /*argument*/) {
         float temp[4];
         // temp[0] = FOC_3::instances[0]->get_elect_angle_A() *0.001;
         // temp[1] = FOC_3::instances[0]->get_elect_angle() *0.001;
-        temp[0] = test_i_d*0.001;
-        temp[1] = test_i_q*0.001;
+        temp[0] = test_i_q*0.001;
+        temp[1] = test_i_d*0.001;
+        // temp[2] = FOC_3::instances[0]->get_iq_target() *0.001;
         // temp[0] = ia*0.001;
         // temp[1] = ib*0.001;
+        // temp[2] = test_u_a*0.001;
+        // temp[3] = test_u_b*0.001;
 
-        Serial_JustFloat(temp,2);
+
+        Serial_JustFloat(temp,4);
         osDelay(1);
     }
 }

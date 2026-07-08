@@ -199,10 +199,10 @@ static void adc_init(void)
 void I_Check_HalfCplt_Handler(void)
 {
     s_active_half = 1;
-    s_m1_a = (int16_t)s_dma_buf[I_CHECK_M1_A] - s_off_m1_a;
-    s_m1_b = (int16_t)s_dma_buf[I_CHECK_M1_B] - s_off_m1_b;
-    s_m2_a = (int16_t)s_dma_buf[I_CHECK_M2_A] - s_off_m2_a;
-    s_m2_b = (int16_t)s_dma_buf[I_CHECK_M2_B] - s_off_m2_b;
+    s_m1_a = -(int16_t)s_dma_buf[I_CHECK_M1_A] + s_off_m1_a;
+    s_m1_b = -(int16_t)s_dma_buf[I_CHECK_M1_B] + s_off_m1_b;
+    s_m2_a = -(int16_t)s_dma_buf[I_CHECK_M2_A] + s_off_m2_a;
+    s_m2_b = -(int16_t)s_dma_buf[I_CHECK_M2_B] + s_off_m2_b;
 }
 
 void I_Check_Cplt_Handler(void)
@@ -210,10 +210,10 @@ void I_Check_Cplt_Handler(void)
     s_active_half = 2;
     uint16_t idx = I_CHECK_CH_NUM;
 
-    s_m1_a = (int16_t)s_dma_buf[idx + I_CHECK_M1_A] - s_off_m1_a;
-    s_m1_b = (int16_t)s_dma_buf[idx + I_CHECK_M1_B] - s_off_m1_b;
-    s_m2_a = (int16_t)s_dma_buf[idx + I_CHECK_M2_A] - s_off_m2_a;
-    s_m2_b = (int16_t)s_dma_buf[idx + I_CHECK_M2_B] - s_off_m2_b;
+    s_m1_a = -(int16_t)s_dma_buf[idx + I_CHECK_M1_A] + s_off_m1_a;
+    s_m1_b = -(int16_t)s_dma_buf[idx + I_CHECK_M1_B] + s_off_m1_b;
+    s_m2_a = -(int16_t)s_dma_buf[idx + I_CHECK_M2_A] + s_off_m2_a;
+    s_m2_b = -(int16_t)s_dma_buf[idx + I_CHECK_M2_B] + s_off_m2_b;
 }
 
 /* ========================================================================== */

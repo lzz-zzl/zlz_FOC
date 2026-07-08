@@ -55,6 +55,11 @@ public:
     void     set_state(uint8_t s)      { m_state = s; }
     uint8_t  get_state() const         { return m_state; }
 
+    void      set_iq_target(int16_t v)       {m_i_q_target = v;}
+    int16_t   get_iq_target() const    { return m_i_q_target; }
+    void      set_id_target(int16_t v)       {m_i_d_target = v;}
+    int16_t   get_id_target() const    { return m_i_d_target; }
+
     void     set_speed_target(float rpm) { m_speed_target = rpm; }
     float    get_speed_target() const    { return m_speed_target; }
 
