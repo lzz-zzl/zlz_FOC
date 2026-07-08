@@ -177,6 +177,14 @@ private:
     inline static int16_t m_cos_table[360] ={};
     inline static bool if_tableInit = false;
 
+    /* ---------- 齿槽补偿 ---------- */
+    int16_t  m_cogging_table[360];  // Q15 补偿值
+    uint16_t m_cogging_count[360];  // 学习计数
+    uint8_t  m_cogging_rounds;     // 已学习圈数
+    bool     m_cogging_enable;     // 启用补偿
+    void cogging_learn_start();
+    void cogging_learn_stop();
+
     /* 内部方法 */
     static void m_enable();
     static void m_disable();

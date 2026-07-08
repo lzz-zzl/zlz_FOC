@@ -7,6 +7,8 @@
 #include "FOC_3.h"
 #include "tim.h"
 #include <string.h>
+#include <stdio.h>
+#include <stdlib.h>
 #include <math.h>
 
 extern "C" {
@@ -239,8 +241,11 @@ void FOC_3::current_park() {
 }
 
 void FOC_3::current_pi_loop() {
-    /* Q15 → float (÷16 恢复到 ADC 单位范围) */
-    m_current_q_obj.Target = m_i_q_target;
+    /* Q15 */
+    float target = (float)m_i_q_target;
+    if (m_cogging_enable)
+        target += (float)m_cogging_table[m_elect_angle];
+    m_current_q_obj.Target = target;
     m_current_q_obj.Actual = (float)m_i_q_q15;
     m_uq = (int16_t)PID_Calculate(m_current_q_pid, &m_current_q_obj);
 
@@ -333,6 +338,40 @@ void FOC_3::period() {
         elect_angle_from_encoder();
         move(m_elect_angle);
     }
+    /* ===== 齿槽补偿学习 (开环拖拽, 模拟角度) ===== */
+    else if (m_state == 121) {
+        static int16_t last_angle = -1;
+        elect_angle_analog(0.2);
+        current_handle();
+        m_ud = 5000; m_uq = 0;
+        move(m_elect_angle_A);
+
+        /* 遍历中间所有角度，防止跳步漏采 */
+        int16_t cur = m_elect_angle_A;
+        if (last_angle >= 0) {
+            if (cur > last_angle) {
+                for (int16_t a = last_angle + 1; a <= cur; a++) {
+                    m_cogging_table[a] += m_i_q_q15;
+                    m_cogging_count[a]++;
+                }
+            } else if (cur < last_angle) {
+                for (int16_t a = last_angle + 1; a < 360; a++) {
+                    m_cogging_table[a] += m_i_q_q15;
+                    m_cogging_count[a]++;
+                }
+                for (int16_t a = 0; a <= cur; a++) {
+                    m_cogging_table[a] += m_i_q_q15;
+                    m_cogging_count[a]++;
+                }
+                m_cogging_rounds++;
+            }
+        }
+        last_angle = cur;
+
+        if (m_cogging_rounds >= 5) {
+            cogging_learn_stop();
+        }
+    }
     // else if (m_state == 3 || m_state == 4 || m_state == 5) {
     //     current_handle();
     //     move(m_elect_angle);
@@ -379,6 +418,32 @@ void FOC_3::error_handle() {
 }
 
 /* ========================================================================== */
+/*                  齿槽补偿                                                   */
+/* ========================================================================== */
+
+void FOC_3::cogging_learn_start() {
+    /* 清空补偿表和计数 */
+    for (uint16_t i = 0; i < 360; i++) {
+        m_cogging_table[i] = 0;
+        m_cogging_count[i] = 0;
+    }
+    m_cogging_rounds = 0;
+    m_cogging_enable = false;
+    m_elect_angle_analog = 0.0f;
+    m_state = 121;
+}
+
+void FOC_3::cogging_learn_stop() {
+    /* 均化补偿表 */
+    for (uint16_t i = 0; i < 360; i++) {
+        if (m_cogging_count[i] > 0)
+            m_cogging_table[i] /= (int16_t)m_cogging_count[i];
+    }
+    m_state = 0;
+    m_cogging_rounds = 0;
+}
+
+/* ========================================================================== */
 /*                  串口命令解析 (VOFA+ 键值对)                                */
 /* ========================================================================== */
 
@@ -397,6 +462,7 @@ void FOC_3::parse_keyValue(char * cmd)
             pid_debug = (uint8_t)val;
         }else if (strcmp(key, "stop") == 0) {
             m->m_state = 0;          /* 电流 Q15 */
+            m->m_cogging_enable = false;
         }
         else if (strcmp(key, "Uq") == 0) {
             m->m_state = 2;
@@ -458,6 +524,29 @@ void FOC_3::parse_keyValue(char * cmd)
             if (pid) pid->kd = val;
             Serial_SendVar("pid",pid_debug);
             // Serial_SendVar("kd", pid->kd);
+        }
+        /* ===== 齿槽补偿命令 ===== */
+        else if (strcmp(key, "cogging") == 0) {
+            if ((int)val == 1) m->cogging_learn_start();
+            else m->cogging_learn_stop();
+        }
+        else if (strcmp(key, "cogging_en") == 0) {
+            m->m_cogging_enable = ((int)val == 1);
+        }
+        else if (strcmp(key, "cogging_dump") == 0) {
+            char buf[128];
+            for (uint16_t i = 0; i < 360; i++) {
+                snprintf(buf, sizeof(buf), "%d%c", m->m_cogging_table[i],
+                         (i == 359) ? '\n' : ',');
+                Serial_SendString(buf);
+            }
+        }
+        else if (strcmp(key, "cogging_load") == 0) {
+            char *p = val_str;
+            for (uint16_t i = 0; i < 360 && p; i++) {
+                m->m_cogging_table[i] = (int16_t)atoi(p);
+                p = strtok(NULL, ",");
+            }
         }
     }
 }
