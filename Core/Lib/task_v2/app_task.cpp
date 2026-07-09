@@ -166,6 +166,7 @@ static void FOC_3_test_task(void* /*argument*/) {
     p.current_d = &curd_pid;
 
     static MT6701 enc({&hspi1, GPIOD, GPIO_PIN_7});
+    // static FOC_3 motor({&enc,I_check_lowpass_M2, &htim2, &htim5, 11, 12.0f, 7.5f, 1.7f, 0, "motor1"});
     static FOC_3 motor({&enc,I_check_lowpass_M1, &htim1, &htim5, 11, 12.0f, 7.5f, 1.7f, 0, "motor1"});
     motor.init(p);
 
@@ -236,12 +237,12 @@ static void task_printf(void * /*argument*/) {
         // temp[1] = FOC_3::instances[0]->get_elect_angle() *0.001;
         temp[0] = test_i_q;
         temp[1] = test_i_d;
-        temp[2] = FOC_3::instances[0]->get_iq_target() ;
-        temp[3] = FOC_3::instances[0]->get_uq()*1.0 ;
+        // temp[2] = FOC_3::instances[0]->get_iq_target() ;
+        // temp[3] = FOC_3::instances[0]->get_uq()*1.0 ;
         // temp[0] = ia*0.001;
         // temp[1] = ib*0.001;
-        // temp[2] = test_u_a*0.001;
-        // temp[3] = test_u_b*0.001;
+        temp[2] = test_u_a;
+        temp[3] = test_u_b;
 
 
         Serial_JustFloat(temp,4);

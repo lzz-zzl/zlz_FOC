@@ -69,21 +69,6 @@ static void adc_gpio_init(void)
     __HAL_RCC_GPIOA_CLK_ENABLE();
     __HAL_RCC_GPIOB_CLK_ENABLE();
 
-    /* PA0 = TIM5_CH1 (AF2) — OC1REF 脉冲触发 ADC */
-    gpio.Pin       = GPIO_PIN_0;
-    gpio.Mode      = GPIO_MODE_AF_PP;
-    gpio.Pull      = GPIO_NOPULL;
-    gpio.Speed     = GPIO_SPEED_FREQ_LOW;
-    gpio.Alternate = GPIO_AF2_TIM5;
-    HAL_GPIO_Init(GPIOA, &gpio);
-
-    /* PA1 = ADC1_IN9 — 电机2 相B (保留, 未来用) */
-    gpio.Pin       = GPIO_PIN_1;
-    gpio.Mode      = GPIO_MODE_ANALOG;
-    gpio.Pull      = GPIO_NOPULL;
-    gpio.Speed     = GPIO_SPEED_FREQ_VERY_HIGH;
-    HAL_GPIO_Init(GPIOA, &gpio);
-
     /* PA6/PA7 = ADC1_IN6/IN7 — 电机1 相A/B */
     gpio.Pin       = GPIO_PIN_6 | GPIO_PIN_7;
     gpio.Mode      = GPIO_MODE_ANALOG;
@@ -91,6 +76,7 @@ static void adc_gpio_init(void)
 
     /* PB0/PB1 = ADC1_IN8/IN9 — 电机2 相A/B */
     gpio.Pin       = GPIO_PIN_0 | GPIO_PIN_1;
+    gpio.Mode      = GPIO_MODE_ANALOG;
     HAL_GPIO_Init(GPIOB, &gpio);
 }
 
@@ -315,7 +301,13 @@ void I_check_M2(int16_t* m2a,int16_t *m2b) {
     *m2a = s_m2_a;
     *m2b = s_m2_b;
 }
-
+#define alpha_10    1
+void I_check_lowpass_M2(int16_t* m2a,int16_t *m2b) {
+    static int16_t m2a_last = 0;
+    static int16_t m2b_last = 0;
+    *m2a = (s_m2_a*alpha_10+m2a_last*(10-alpha_10))/10;
+    *m2b = (s_m2_b*alpha_10+m2b_last*(10-alpha_10))/10;
+}
 int16_t I_Check_Get_Offset_M1_A(void)  { return s_off_m1_a; }
 int16_t I_Check_Get_Offset_M1_B(void)  { return s_off_m1_b; }
 int16_t I_Check_Get_Offset_M2_A(void)  { return s_off_m2_a; }

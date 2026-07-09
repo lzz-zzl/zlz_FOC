@@ -372,23 +372,23 @@ void FOC_3::period() {
             cogging_learn_stop();
         }
     }
-    // else if (m_state == 3 || m_state == 4 || m_state == 5) {
-    //     current_handle();
-    //     move(m_elect_angle);
-    // }
-    //
-    //
-    // else if (m_state == 111) {
-    //     m_check_wire_count++;
-    //     m_uq = 4000; m_ud = 0;
-    //     elect_angle_from_encoder();
-    //     move(m_elect_angle);
-    //     if (m_location - m_start_angle > 500 && m_location - m_start_angle < 3000) m_state = 0;
-    //     if (m_check_wire_count >= 5000) { m_wire_swapped = true; m_state = 112; m_check_wire_count = 0; }
-    // }
-    // else if (m_state == 113) {
-    //     m_uq = 0; m_ud = 0;
-    // }
+    else if (m_state == 3 || m_state == 4 || m_state == 5) {
+        current_handle();
+        move(m_elect_angle);
+    }
+
+
+    else if (m_state == 111) {
+        m_check_wire_count++;
+        m_uq = 4000; m_ud = 0;
+        elect_angle_from_encoder();
+        move(m_elect_angle);
+        if (m_location - m_start_angle > 500 && m_location - m_start_angle < 3000) m_state = 0;
+        if (m_check_wire_count >= 5000) { m_wire_swapped = true; m_state = 112; m_check_wire_count = 0; }
+    }
+    else if (m_state == 113) {
+        m_uq = 0; m_ud = 0;
+    }
 }
 
 /* ========================================================================== */
@@ -484,6 +484,7 @@ void FOC_3::parse_keyValue(char * cmd)
         }
         else if (strcmp(key, "pos") == 0) {
             m->m_location_target = (int16_t)val;  /* 位置目标 (14-bit) */
+            m->m_state = 4;
         }
         /* 调参 kp/ki/kd — 作用于选中的 PID */
         else if (strcmp(key, "kp") == 0) {

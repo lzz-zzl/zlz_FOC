@@ -72,6 +72,7 @@ void I_check_M1(int16_t* m1a,int16_t *m1b);
 void I_check_lowpass_M1(int16_t* m1a,int16_t *m1b);
 int16_t  I_Check_Get_M2_A(void);
 int16_t  I_Check_Get_M2_B(void);
+void I_check_lowpass_M2(int16_t* m1a,int16_t *m1b);
 void I_check_M2(int16_t* m2a,int16_t *m2b);
 
 /* ===================== 零点偏移 (只读) ===================== */
