@@ -165,9 +165,10 @@ static void FOC_3_test_task(void* /*argument*/) {
     p.current_q = &curq_pid;
     p.current_d = &curd_pid;
 
-    static MT6701 enc({&hspi1, GPIOD, GPIO_PIN_7});
-    // static FOC_3 motor({&enc,I_check_lowpass_M2, &htim2, &htim5, 11, 12.0f, 7.5f, 1.7f, 0, "motor1"});
+    // static MT6701 enc({&hspi1, GPIOD, GPIO_PIN_7});
+    static MT6701 enc({&hspi2, GPIOB, GPIO_PIN_12});
     static FOC_3 motor({&enc,I_check_lowpass_M1, &htim1, &htim5, 11, 12.0f, 7.5f, 1.7f, 0, "motor1"});
+    // static FOC_3 motor({&enc,I_check_lowpass_M2, &htim2, &htim5, 11, 12.0f, 7.5f, 1.7f, 0, "motor1"});
     motor.init(p);
 
     for (;;) {
@@ -219,6 +220,7 @@ extern int16_t test_u_b;
 extern int16_t test_u_c;
 extern int16_t test_i_d;
 extern int16_t test_i_q;
+extern int16_t test_i_a,test_i_b;
 
 
 static void task_printf(void * /*argument*/) {
@@ -229,8 +231,8 @@ static void task_printf(void * /*argument*/) {
         // Serial_JustFloat(datas,1);
         int16_t ia = I_Check_Get_M1_A();
         int16_t ib = I_Check_Get_M1_B();
-        // int16_t ia2 = I_Check_Get_M2_A();
-        // int16_t ib2 = I_Check_Get_M2_B();
+        int16_t ia2 = I_Check_Get_M2_A();
+        int16_t ib2 = I_Check_Get_M2_B();
 
         float temp[4];
         // temp[0] = FOC_3::instances[0]->get_elect_angle_A() *0.001;
@@ -238,11 +240,11 @@ static void task_printf(void * /*argument*/) {
         temp[0] = test_i_q;
         temp[1] = test_i_d;
         // temp[2] = FOC_3::instances[0]->get_iq_target() ;
-        // temp[3] = FOC_3::instances[0]->get_uq()*1.0 ;
-        // temp[0] = ia*0.001;
-        // temp[1] = ib*0.001;
-        temp[2] = test_u_a;
-        temp[3] = test_u_b;
+        temp[3] = FOC_3::instances[0]->get_uq()*1.0 ;
+        // temp[0] = ia2;
+        // temp[1] = ib2;
+        // temp[2] = test_u_a;
+        // temp[3] = test_u_b;
 
 
         Serial_JustFloat(temp,4);

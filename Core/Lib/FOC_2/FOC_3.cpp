@@ -107,6 +107,7 @@ void FOC_3::init(const PIDCtrl &pid) {
     set_volt(0, 0, 0);
 
     HAL_TIM_Base_Start_IT(m_htim_pwm);
+    HAL_TIM_Base_Start_IT(m_htim_ctrl);
 }
 
 /* ========================================================================== */
@@ -130,8 +131,8 @@ void FOC_3::elect_angle_zero_calibration() {
     m_ud = 0;
     set_volt(0, 0, 0);
     m_state = 0;
-    m_enable();
-    HAL_TIM_Base_Start_IT(m_htim_pwm);
+    m_disable();
+    HAL_TIM_Base_Start_IT(m_htim_ctrl);
     int16_t before = m_encoder->refresh_raw();  // 使能前读一次
     Serial_SendVar("before", before);
 }
@@ -160,8 +161,13 @@ void FOC_3::elect_angle_analog(float rad_s) {
 /* ========================================================================== */
 /*                      电流输入 & 坐标变换                                      */
 /* ========================================================================== */
+
+int16_t test_i_a,test_i_b;
 void FOC_3::current_handle() {
     m_get_current(&m_i_a, &m_i_b);
+
+    test_i_a = m_i_a;
+    test_i_b = m_i_b;
 
     current_clarke(m_i_a, m_i_b);
     current_park();
