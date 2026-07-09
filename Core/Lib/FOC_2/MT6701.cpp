@@ -57,12 +57,12 @@ MT6701::MT6701(const Config &cfg)
       m_last_diag(1)
 {
     /* 配置 CS 引脚为推挽输出 */
-    GPIO_InitTypeDef GPIO_InitStruct = {0};
-    GPIO_InitStruct.Pin   = m_cs_pin;
-    GPIO_InitStruct.Mode  = GPIO_MODE_OUTPUT_PP;
-    GPIO_InitStruct.Pull  = GPIO_NOPULL;
-    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-    HAL_GPIO_Init(m_cs_port, &GPIO_InitStruct);
+    // GPIO_InitTypeDef GPIO_InitStruct = {0};
+    // GPIO_InitStruct.Pin   = m_cs_pin;
+    // GPIO_InitStruct.Mode  = GPIO_MODE_OUTPUT_PP;
+    // GPIO_InitStruct.Pull  = GPIO_NOPULL;
+    // GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+    // HAL_GPIO_Init(m_cs_port, &GPIO_InitStruct);
 
     cs_deassert();
 }

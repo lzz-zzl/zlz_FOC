@@ -147,34 +147,52 @@ static void SerialTaskFunc(void* /*argument*/) {
 static void FOC_3_test_task(void* /*argument*/) {
 
     Serial_Init();
-    /* 创建 PID */
-    static control_PID speed_pid, loc_pid, curq_pid, curd_pid, direct_pid;
 
+    //电机1
+    static control_PID m1_speed_pid, m1_loc_pid, m1_curq_pid, m1_curd_pid, m1_direct_pid;
     /* 初始化三环 PID 参数 */
-    Control_PID_Init(&speed_pid,   1200.0f, 20.0f, 0.0f, -32767.0f, 32767.0f, 10000.0f);
-    Control_PID_Init(&loc_pid,     0.02f, 0.000005f, 0.001f, -4.0f, 4.0f, 15.0f);
-    Control_PID_Init(&curq_pid,    40.0f, 0.3f, 0.0f, -32767.0f, 32767.0f, 15000);
-    Control_PID_Init(&curd_pid,    10.0f, 0.6f, 0.0f, -32767.0f, 32767.0f, 15000);
-    Control_PID_Init(&direct_pid,  15.0f, 0.15f, 50.0f, -32767.0f, 32767.0f, 8000.0f);
-
+    Control_PID_Init(&m1_speed_pid,   1200.0f, 20.0f, 0.0f, -32767.0f, 32767.0f, 10000.0f);
+    Control_PID_Init(&m1_loc_pid,     0.02f, 0.000005f, 0.001f, -4.0f, 4.0f, 15.0f);
+    Control_PID_Init(&m1_curq_pid,    40.0f, 0.3f, 0.0f, -32767.0f, 32767.0f, 15000);
+    Control_PID_Init(&m1_curd_pid,    10.0f, 0.6f, 0.0f, -32767.0f, 32767.0f, 15000);
+    Control_PID_Init(&m1_direct_pid,  15.0f, 0.15f, 50.0f, -32767.0f, 32767.0f, 8000.0f);
     /* 创建电机 */
-    FOC_3::PIDCtrl p;
-    p.speed     = &speed_pid;
-    p.location  = &loc_pid;
-    p.direct    = &direct_pid;
-    p.current_q = &curq_pid;
-    p.current_d = &curd_pid;
+    FOC_3::PIDCtrl m1_pid;
+    m1_pid.speed     = &m1_speed_pid;
+    m1_pid.location  = &m1_loc_pid;
+    m1_pid.direct    = &m1_direct_pid;
+    m1_pid.current_q = &m1_curq_pid;
+    m1_pid.current_d = &m1_curd_pid;
+    static MT6701 m1_enc({&hspi1, GPIOD, GPIO_PIN_7});
+    static FOC_3 motor1({&m1_enc,I_check_lowpass_M1, &htim1, &htim5, 11, 12.0f, 7.5f, 1.7f, 0, "motor1"});
+    motor1.init(m1_pid);
 
-    // static MT6701 enc({&hspi1, GPIOD, GPIO_PIN_7});
-    static MT6701 enc({&hspi2, GPIOB, GPIO_PIN_12});
-    static FOC_3 motor({&enc,I_check_lowpass_M1, &htim1, &htim5, 11, 12.0f, 7.5f, 1.7f, 0, "motor1"});
-    // static FOC_3 motor({&enc,I_check_lowpass_M2, &htim2, &htim5, 11, 12.0f, 7.5f, 1.7f, 0, "motor1"});
-    motor.init(p);
+    //电机2
+    /* 创建 PID */
+    static control_PID m2_speed_pid, m2_loc_pid, m2_curq_pid, m2_curd_pid, m2_direct_pid;
+    /* 初始化三环 PID 参数 */
+    Control_PID_Init(&m2_speed_pid,   1200.0f, 20.0f, 0.0f, -32767.0f, 32767.0f, 10000.0f);
+    Control_PID_Init(&m2_loc_pid,     0.02f, 0.000005f, 0.001f, -4.0f, 4.0f, 15.0f);
+    Control_PID_Init(&m2_curq_pid,    40.0f, 0.3f, 0.0f, -32767.0f, 32767.0f, 15000);
+    Control_PID_Init(&m2_curd_pid,    10.0f, 0.6f, 0.0f, -32767.0f, 32767.0f, 15000);
+    Control_PID_Init(&m2_direct_pid,  15.0f, 0.15f, 50.0f, -32767.0f, 32767.0f, 8000.0f);
+    /* 创建电机 */
+    FOC_3::PIDCtrl m2_pid;
+    m2_pid.speed     = &m2_speed_pid;
+    m2_pid.location  = &m2_loc_pid;
+    m2_pid.direct    = &m2_direct_pid;
+    m2_pid.current_q = &m2_curq_pid;
+    m2_pid.current_d = &m2_curd_pid;
+
+    static MT6701 m2_enc({&hspi2, GPIOB, GPIO_PIN_12});
+    static FOC_3 motor2({&m2_enc,I_check_lowpass_M2, &htim2, &htim5, 11, 12.0f, 7.5f, 1.7f, 1, "motor1"});
+    motor2.init(m2_pid);
 
     for (;;) {
         osSemaphoreAcquire(uart_sem, osWaitForever);
         FOC_3_parse_keyValue(kv_buf);
-        motor.error_handle();
+        motor1.error_handle();
+        // motor2.error_handle();
         // osDelay(10);
     }
 }
@@ -203,15 +221,19 @@ static void MT6701TaskFunc(void* /*argument*/) {
 
 static void JY61PTestTask(void* /*argument*/) {
     osDelay(200);
+    /* 手动初始化 PB12 为推挽输出 */
+    GPIO_InitTypeDef g = {0};
+    g.Pin = GPIO_PIN_12;
+    g.Mode = GPIO_MODE_OUTPUT_PP;
+    g.Pull = GPIO_NOPULL;
+    g.Speed = GPIO_SPEED_FREQ_LOW;
+    HAL_GPIO_Init(GPIOB, &g);
+
     for (;;) {
-        // OLED_ShowNum(4, 1, static_cast<uint16_t>(JY61P_GetRoll() * 10), 4);
-        // OLED_ShowNum(4, 7, static_cast<uint16_t>(JY61P_GetPitch() * 10), 4);
-        // OLED_ShowNum(4, 13, static_cast<uint16_t>(JY61P_GetYaw() * 10), 4);
-        // Serial_Printf("[jy61p]r=%.1f p=%.1f y=%.1f\r\n",
-        //               (double)JY61P_GetRoll(),
-        //               (double)JY61P_GetPitch(),
-        //               (double)JY61P_GetYaw());
+        HAL_GPIO_WritePin(GPIOB, GPIO_PIN_12, GPIO_PIN_SET);
         osDelay(100);
+        HAL_GPIO_WritePin(GPIOB, GPIO_PIN_12, GPIO_PIN_RESET);
+        osDelay(500);
     }
 }
 
