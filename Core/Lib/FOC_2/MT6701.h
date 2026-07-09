@@ -89,6 +89,7 @@ private:
     void cs_assert();
     void cs_deassert();
     int16_t ssi_read_angle();
+    int16_t ssi_read_angle_fast();  /* 直接寄存器 SPI, 快 10x */
 };
 
 #endif /* __cplusplus */

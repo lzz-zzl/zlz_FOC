@@ -129,6 +129,26 @@ int16_t MT6701::ssi_read_angle() {
     return (int16_t)((rx >> 1) & 0x3FFF);
 }
 
+/**
+  * @brief  直接寄存器 SPI 读 (绕过 HAL, 快 10x).
+  *         16 SCK 脉冲, 读取 14-bit 角度.
+  */
+int16_t MT6701::ssi_read_angle_fast() {
+    cs_assert();
+    delay_us(2);
+
+    SPI_TypeDef *spi = m_hspi->Instance;
+    spi->DR = 0;
+    while (!(spi->SR & SPI_SR_RXNE));
+    uint8_t b1 = (uint8_t)spi->DR;
+    while (!(spi->SR & SPI_SR_RXNE));
+    uint8_t b2 = (uint8_t)spi->DR;
+    uint16_t rx = ((uint16_t)b1 << 8) | b2;
+
+    cs_deassert();
+    return (int16_t)((rx >> 1) & 0x3FFF);
+}
+
 int16_t MT6701::read_raw_angle() {
     return ssi_read_angle();
 }
