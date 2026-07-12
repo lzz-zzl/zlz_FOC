@@ -149,23 +149,23 @@ static void FOC_3_test_task(void* /*argument*/) {
     Serial_Init();
 
     //电机1
-    // static control_PID m1_speed_pid, m1_loc_pid, m1_curq_pid, m1_curd_pid, m1_direct_pid;
+    static control_PID m1_speed_pid, m1_loc_pid, m1_curq_pid, m1_curd_pid, m1_direct_pid;
     /* 初始化三环 PID 参数 */
-    // Control_PID_Init(&m1_speed_pid,   1200.0f, 20.0f, 0.0f, -32767.0f, 32767.0f, 10000.0f);
-    // Control_PID_Init(&m1_loc_pid,     0.02f, 0.000005f, 0.001f, -4.0f, 4.0f, 15.0f);
-    // Control_PID_Init(&m1_curq_pid,    40.0f, 0.3f, 0.0f, -32767.0f, 32767.0f, 15000);
-    // Control_PID_Init(&m1_curd_pid,    10.0f, 0.6f, 0.0f, -32767.0f, 32767.0f, 15000);
-    // Control_PID_Init(&m1_direct_pid,  15.0f, 0.15f, 50.0f, -32767.0f, 32767.0f, 8000.0f);
-    // /* 创建电机 */
-    // FOC_3::PIDCtrl m1_pid;
-    // m1_pid.speed     = &m1_speed_pid;
-    // m1_pid.location  = &m1_loc_pid;
-    // m1_pid.direct    = &m1_direct_pid;
-    // m1_pid.current_q = &m1_curq_pid;
-    // m1_pid.current_d = &m1_curd_pid;
-    // static MT6701 m1_enc({&hspi1, GPIOD, GPIO_PIN_7});
-    // static FOC_3 motor1({&m1_enc,I_check_lowpass_M1, &htim1, &htim5, 11, 12.0f, 7.5f, 1.7f, 0, "motor1"});
-    // motor1.init(m1_pid);
+    Control_PID_Init(&m1_speed_pid,   1200.0f, 20.0f, 0.0f, -32767.0f, 32767.0f, 10000.0f);
+    Control_PID_Init(&m1_loc_pid,     0.02f, 0.000005f, 0.001f, -4.0f, 4.0f, 15.0f);
+    Control_PID_Init(&m1_curq_pid,    40.0f, 0.3f, 0.0f, -32767.0f, 32767.0f, 15000);
+    Control_PID_Init(&m1_curd_pid,    10.0f, 0.6f, 0.0f, -32767.0f, 32767.0f, 15000);
+    Control_PID_Init(&m1_direct_pid,  15.0f, 0.15f, 50.0f, -32767.0f, 32767.0f, 8000.0f);
+    /* 创建电机 */
+    FOC_3::PIDCtrl m1_pid;
+    m1_pid.speed     = &m1_speed_pid;
+    m1_pid.location  = &m1_loc_pid;
+    m1_pid.direct    = &m1_direct_pid;
+    m1_pid.current_q = &m1_curq_pid;
+    m1_pid.current_d = &m1_curd_pid;
+    static MT6701 m1_enc({&hspi1, GPIOD, GPIO_PIN_7});
+    static FOC_3 motor1({&m1_enc,I_check_lowpass_M1, &htim1, &htim5, 11, 12.0f, 7.5f, 1.7f, 0, "motor1"});
+    motor1.init(m1_pid);
 
     //电机2
     /* 创建 PID */
