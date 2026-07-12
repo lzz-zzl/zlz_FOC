@@ -13,9 +13,9 @@
 
 class FOC_3 {
 public:
-    static FOC_3 *instances[16];
+    static FOC_3 *instances[4];
     static uint8_t motorID_debug;
-    static uint8_t motorID_list[16];
+    static uint8_t motorID_list[4];
     static uint8_t pid_debug;        /* 0=cur_q, 1=cur_d, 2=speed, 3=location, 4=direct */
 
 

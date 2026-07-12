@@ -243,39 +243,45 @@ void I_Check_Stop(void)
 /**
   * @brief  零点校准: 四通道同时采集 n 次取平均
   */
+uint8_t if_Check_Calibrate = 0;
+
 void I_Check_Calibrate(uint16_t n)
 {
-    if (n == 0) n = 200;
+    if (if_Check_Calibrate == 0) {
+        if_Check_Calibrate = 1;
+        if (n == 0) n = 200;
 
-    uint32_t sum[4] = {0, 0, 0, 0};
-    uint16_t cnt = 0;
+        uint32_t sum[4] = {0, 0, 0, 0};
+        uint16_t cnt = 0;
 
-    for (uint16_t i = 0; i < n; i++)
-    {
-        uint32_t timeout = 50000;
-        uint8_t  prev    = s_active_half;
+        for (uint16_t i = 0; i < n; i++)
+        {
+            uint32_t timeout = 50000;
+            uint8_t  prev    = s_active_half;
 
-        while (s_active_half == prev && timeout--)
-            for (volatile uint32_t d = 0; d < 50; d++) {}
+            while (s_active_half == prev && timeout--)
+                for (volatile uint32_t d = 0; d < 50; d++) {}
 
-        if (timeout == 0) break;
+            if (timeout == 0) break;
 
-        sum[0] += raw(I_CHECK_M1_A);
-        sum[1] += raw(I_CHECK_M1_B);
-        sum[2] += raw(I_CHECK_M2_A);
-        sum[3] += raw(I_CHECK_M2_B);
-        cnt++;
+            sum[0] += raw(I_CHECK_M1_A);
+            sum[1] += raw(I_CHECK_M1_B);
+            sum[2] += raw(I_CHECK_M2_A);
+            sum[3] += raw(I_CHECK_M2_B);
+            cnt++;
+        }
+
+        if (cnt > 0)
+        {
+            s_off_m1_a = (int16_t)(sum[0] / cnt);
+            s_off_m1_b = (int16_t)(sum[1] / cnt);
+            s_off_m2_a = (int16_t)(sum[2] / cnt);
+            s_off_m2_b = (int16_t)(sum[3] / cnt);
+        }
+
+        s_m1_a = s_m1_b = s_m2_a = s_m2_b = 0;
+
     }
-
-    if (cnt > 0)
-    {
-        s_off_m1_a = (int16_t)(sum[0] / cnt);
-        s_off_m1_b = (int16_t)(sum[1] / cnt);
-        s_off_m2_a = (int16_t)(sum[2] / cnt);
-        s_off_m2_b = (int16_t)(sum[3] / cnt);
-    }
-
-    s_m1_a = s_m1_b = s_m2_a = s_m2_b = 0;
 }
 
 /* ======================== Getter ======================== */
@@ -312,5 +318,7 @@ int16_t I_Check_Get_Offset_M1_A(void)  { return s_off_m1_a; }
 int16_t I_Check_Get_Offset_M1_B(void)  { return s_off_m1_b; }
 int16_t I_Check_Get_Offset_M2_A(void)  { return s_off_m2_a; }
 int16_t I_Check_Get_Offset_M2_B(void)  { return s_off_m2_b; }
+
+
 
 volatile uint16_t* I_Check_Get_Buf(void) { return s_dma_buf; }

@@ -22,8 +22,9 @@ extern "C" {
 /* ========================================================================== */
 /*                      构造函数                                                */
 /* ========================================================================== */
-FOC_3* FOC_3::instances[16] = {nullptr};
+FOC_3* FOC_3::instances[4] = {nullptr};
 uint8_t FOC_3::motorID_debug = 0;          // 初始化为 0
+uint8_t FOC_3::motorID_list[4] = {255,255,255,255};
 uint8_t FOC_3::pid_debug = 0;              // 初始化为 0
 
 FOC_3::FOC_3(const Config &cfg)
@@ -62,8 +63,6 @@ FOC_3::FOC_3(const Config &cfg)
       m_adc_zero_a(2048), m_adc_zero_b(2048)
 {
     instances[cfg.id] = this;
-    for (auto &v : m_sin_table) v = 0;
-    for (auto &v : m_cos_table) v = 0;
 }
 
 /* ========================================================================== */
@@ -188,6 +187,7 @@ void FOC_3::set_volt(int16_t ua, int16_t ub, int16_t uc) {
 }
 
 void FOC_3::inv_park_clark_q15(int16_t angle) {
+    int16_t test =  m_cos_table[100];
     int16_t cos_t = m_cos_table[angle];
     int16_t sin_t = m_sin_table[angle];
 
@@ -308,10 +308,6 @@ void FOC_3::period() {
     int16_t m_i_a, m_i_b;
     m_per_count++;
 
-    if (m_state == 0) {
-        m_disable();
-    }
-    else {m_enable();}
     // if (m_per_count >= 30) {
     //     m_per_count = 0;
     //     m_speed = m_encoder->calc_speed_rpm_low_pass() / 60.0f;
@@ -460,15 +456,16 @@ void FOC_3::parse_keyValue(char * cmd)
     float val = atof(val_str);
     if (strcmp(key, "M_debug") == 0) {
         motorID_debug = (uint8_t)val;
+    }else if (strcmp(key, "stop") == 0) {
+        m_disable();
+    }else if (strcmp(key, "start") == 0) {
+        m_enable();
     }
     FOC_3 *m = instances[motorID_debug];
-    {
+    if (m){
         /* 选择 PID 环: M_pid:0~4 */
         if (strcmp(key, "M_pid") == 0) {
             pid_debug = (uint8_t)val;
-        }else if (strcmp(key, "stop") == 0) {
-            m->m_state = 0;          /* 电流 Q15 */
-            m->m_cogging_enable = false;
         }
         else if (strcmp(key, "Uq") == 0) {
             m->m_state = 2;
@@ -559,7 +556,7 @@ void FOC_3::parse_keyValue(char * cmd)
 }
 
 void FOC_3::Motors_period() {
-    for (uint8_t i = 0; i < 16; i++) {
+    for (uint8_t i = 0; i < 4; i++) {
         if (instances[i]) {
             instances[i]->period();
         }
@@ -574,3 +571,4 @@ void FOC_3_parse_keyValue(char * cmd) {
     FOC_3::parse_keyValue(cmd);
 }
 
+// void FOC_3::show

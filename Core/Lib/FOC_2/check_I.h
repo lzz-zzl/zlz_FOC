@@ -86,4 +86,20 @@ int16_t  I_Check_Get_Offset_M2_B(void);
 
 volatile uint16_t* I_Check_Get_Buf(void);
 
+//打包结构体
+// typedef struct {
+//   void (*get_current)(int16_t *i_a, int16_t *i_b);
+//   void (*I_Check_Calibrate)(uint16_t n);
+// } I_check_t ;
+//
+// I_check_t M1_curcCheck = {
+//   I_check_M1,
+//   I_Check_Calibrate
+// };
+// I_check_t M2_curcCheck = {
+//   I_check_M2,
+//   I_Check_Calibrate
+// };
+
+
 #endif /* ITCAP_STM_CHECK_I_H */
