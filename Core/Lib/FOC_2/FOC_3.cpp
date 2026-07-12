@@ -161,7 +161,7 @@ void FOC_3::elect_angle_analog(float rad_s) {
 /*                      电流输入 & 坐标变换                                      */
 /* ========================================================================== */
 
-int16_t test_i_a,test_i_b;
+int16_t test_i_a,test_i_b,test_i_c;
 void FOC_3::current_handle() {
     m_get_current(&m_i_a, &m_i_b);
 
@@ -210,7 +210,7 @@ void FOC_3::svpwm_calculate() {
     m_uc -= u_min;
 }
 
-int16_t test_u_a,test_u_b,test_u_c;
+int16_t test_u_a,test_u_b;
 
 void FOC_3::move(int16_t angle) {
     inv_park_clark_q15(angle);
@@ -218,7 +218,6 @@ void FOC_3::move(int16_t angle) {
     set_volt(m_ua, m_ub, m_uc);
     test_u_a = m_ua;
     test_u_b = m_ub;
-    test_u_c = m_uc;
 }
 
 /* ========================================================================== */
@@ -321,6 +320,12 @@ void FOC_3::period() {
     //     m_i_q_ref = 0; m_uq = 0; m_ud = 0;
     // }
     //
+    if (m_state == 0) {
+
+        m_uq = 0;
+        m_ud = 0;
+        move(m_elect_angle);
+    }
     if (m_state == 1) {
         elect_angle_from_encoder();
 
@@ -466,6 +471,9 @@ void FOC_3::parse_keyValue(char * cmd)
         /* 选择 PID 环: M_pid:0~4 */
         if (strcmp(key, "M_pid") == 0) {
             pid_debug = (uint8_t)val;
+        }
+        if (strcmp(key, "wait") == 0) {
+            m->m_state = 0;
         }
         else if (strcmp(key, "Uq") == 0) {
             m->m_state = 2;

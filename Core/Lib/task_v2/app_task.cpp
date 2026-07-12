@@ -149,23 +149,23 @@ static void FOC_3_test_task(void* /*argument*/) {
     Serial_Init();
 
     //电机1
-    static control_PID m1_speed_pid, m1_loc_pid, m1_curq_pid, m1_curd_pid, m1_direct_pid;
+    // static control_PID m1_speed_pid, m1_loc_pid, m1_curq_pid, m1_curd_pid, m1_direct_pid;
     /* 初始化三环 PID 参数 */
-    Control_PID_Init(&m1_speed_pid,   1200.0f, 20.0f, 0.0f, -32767.0f, 32767.0f, 10000.0f);
-    Control_PID_Init(&m1_loc_pid,     0.02f, 0.000005f, 0.001f, -4.0f, 4.0f, 15.0f);
-    Control_PID_Init(&m1_curq_pid,    40.0f, 0.3f, 0.0f, -32767.0f, 32767.0f, 15000);
-    Control_PID_Init(&m1_curd_pid,    10.0f, 0.6f, 0.0f, -32767.0f, 32767.0f, 15000);
-    Control_PID_Init(&m1_direct_pid,  15.0f, 0.15f, 50.0f, -32767.0f, 32767.0f, 8000.0f);
-    /* 创建电机 */
-    FOC_3::PIDCtrl m1_pid;
-    m1_pid.speed     = &m1_speed_pid;
-    m1_pid.location  = &m1_loc_pid;
-    m1_pid.direct    = &m1_direct_pid;
-    m1_pid.current_q = &m1_curq_pid;
-    m1_pid.current_d = &m1_curd_pid;
-    static MT6701 m1_enc({&hspi1, GPIOD, GPIO_PIN_7});
-    static FOC_3 motor1({&m1_enc,I_check_lowpass_M1, &htim1, &htim5, 11, 12.0f, 7.5f, 1.7f, 0, "motor1"});
-    motor1.init(m1_pid);
+    // Control_PID_Init(&m1_speed_pid,   1200.0f, 20.0f, 0.0f, -32767.0f, 32767.0f, 10000.0f);
+    // Control_PID_Init(&m1_loc_pid,     0.02f, 0.000005f, 0.001f, -4.0f, 4.0f, 15.0f);
+    // Control_PID_Init(&m1_curq_pid,    40.0f, 0.3f, 0.0f, -32767.0f, 32767.0f, 15000);
+    // Control_PID_Init(&m1_curd_pid,    10.0f, 0.6f, 0.0f, -32767.0f, 32767.0f, 15000);
+    // Control_PID_Init(&m1_direct_pid,  15.0f, 0.15f, 50.0f, -32767.0f, 32767.0f, 8000.0f);
+    // /* 创建电机 */
+    // FOC_3::PIDCtrl m1_pid;
+    // m1_pid.speed     = &m1_speed_pid;
+    // m1_pid.location  = &m1_loc_pid;
+    // m1_pid.direct    = &m1_direct_pid;
+    // m1_pid.current_q = &m1_curq_pid;
+    // m1_pid.current_d = &m1_curd_pid;
+    // static MT6701 m1_enc({&hspi1, GPIOD, GPIO_PIN_7});
+    // static FOC_3 motor1({&m1_enc,I_check_lowpass_M1, &htim1, &htim5, 11, 12.0f, 7.5f, 1.7f, 0, "motor1"});
+    // motor1.init(m1_pid);
 
     //电机2
     /* 创建 PID */
@@ -191,7 +191,7 @@ static void FOC_3_test_task(void* /*argument*/) {
     for (;;) {
         osSemaphoreAcquire(uart_sem, osWaitForever);
         FOC_3_parse_keyValue(kv_buf);
-        motor1.error_handle();
+        // motor1.error_handle();
         // motor2.error_handle();
         // osDelay(10);
     }
@@ -256,20 +256,21 @@ static void task_printf(void * /*argument*/) {
         int16_t ia2 = I_Check_Get_M2_A();
         int16_t ib2 = I_Check_Get_M2_B();
 
-        float temp[4];
+        float temp[5];
         // temp[0] = FOC_3::instances[0]->get_elect_angle_A() *0.001;
         // temp[1] = FOC_3::instances[0]->get_elect_angle() *0.001;
         temp[0] = test_i_q;
         temp[1] = test_i_d;
-        // temp[2] = FOC_3::instances[0]->get_iq_target() ;
+        temp[2] = FOC_3::instances[0]->get_iq_target() ;
         temp[3] = FOC_3::instances[0]->get_uq()*1.0 ;
-        // temp[0] = ia2;
-        // temp[1] = ib2;
+        // temp[0] = test_i_a;
+        // temp[1] = test_i_b;
         // temp[2] = test_u_a;
         // temp[3] = test_u_b;
+        temp[4] = 0;
 
 
-        Serial_JustFloat(temp,4);
+        Serial_JustFloat(temp,5);
         osDelay(1);
     }
 }
