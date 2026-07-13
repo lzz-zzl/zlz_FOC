@@ -101,7 +101,6 @@ float PID_Calculate(control_PID *pid, control_object *obj){
     }
 
     pid->Error_pass = pid->Error_now;
-
     return obj->Out;
 }
 float PID_Calculate_debug(control_PID *pid, control_object *obj, float *debug_data){

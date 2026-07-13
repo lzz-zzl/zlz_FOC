@@ -17,7 +17,7 @@ public:
     static uint8_t motorID_debug;
     static uint8_t motorID_list[4];
     static uint8_t pid_debug;        /* 0=cur_q, 1=cur_d, 2=speed, 3=location, 4=direct */
-
+    static bool driver_en;
 
     uint32_t  m_per_count;
 

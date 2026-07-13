@@ -26,6 +26,7 @@ FOC_3* FOC_3::instances[4] = {nullptr};
 uint8_t FOC_3::motorID_debug = 0;          // 初始化为 0
 uint8_t FOC_3::motorID_list[4] = {255,255,255,255};
 uint8_t FOC_3::pid_debug = 0;              // 初始化为 0
+bool FOC_3::driver_en = false;
 
 FOC_3::FOC_3(const Config &cfg)
     : m_encoder(cfg.encoder),
@@ -253,7 +254,7 @@ void FOC_3::current_pi_loop() {
         target += (float)m_cogging_table[m_elect_angle];
     m_current_q_obj.Target = target;
     m_current_q_obj.Actual = (float)m_i_q_q15;
-    m_uq = (int16_t)PID_Calculate_debug(m_current_q_pid, &m_current_q_obj,test_curdata);
+    m_uq = m_i_q_target +(int16_t)PID_Calculate_debug(m_current_q_pid, &m_current_q_obj,test_curdata) +m_i_q_target*14 ;
 
     m_current_d_obj.Target = 0.0f;
     m_current_d_obj.Actual = (float)m_i_d_q15;
@@ -353,7 +354,9 @@ void FOC_3::period() {
         move(m_elect_angle);
     }
     else if (m_state == 6) {
-        current_pi_loop();
+        if (driver_en) {
+            current_pi_loop();
+        }
         elect_angle_from_encoder();
         move(m_elect_angle);
     }
@@ -472,8 +475,10 @@ void FOC_3::parse_keyValue(char * cmd)
     if (strcmp(key, "M_debug") == 0) {
         motorID_debug = (uint8_t)val;
     }else if (strcmp(key, "stop") == 0) {
+        driver_en = false;
         m_disable();
     }else if (strcmp(key, "start") == 0) {
+        driver_en = true;
         m_enable();
     }
     FOC_3 *m = instances[motorID_debug];

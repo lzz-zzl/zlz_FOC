@@ -154,6 +154,9 @@ static void FOC_3_test_task(void* /*argument*/) {
     Control_PID_Init(&m1_speed_pid,   1200.0f, 20.0f, 0.0f, -32767.0f, 32767.0f, 10000.0f);
     Control_PID_Init(&m1_loc_pid,     0.02f, 0.000005f, 0.001f, -4.0f, 4.0f, 15.0f);
     Control_PID_Init(&m1_curq_pid,    40.0f, 0.3f, 0.0f, -32767.0f, 32767.0f, 25000);
+    lowpass_Filter curOutFilter = {0.1f,0.0f};
+    PID_EnableOutputFilter(&m1_curq_pid, lowpass_filter,&curOutFilter);
+
     Control_PID_Init(&m1_curd_pid,    10.0f, 0.6f, 0.0f, -32767.0f, 32767.0f, 25000);
     Control_PID_Init(&m1_direct_pid,  15.0f, 0.15f, 50.0f, -32767.0f, 32767.0f, 8000.0f);
     /* 创建电机 */
@@ -174,7 +177,7 @@ static void FOC_3_test_task(void* /*argument*/) {
     Control_PID_Init(&m2_speed_pid,   1200.0f, 20.0f, 0.0f, -32767.0f, 32767.0f, 10000.0f);
     Control_PID_Init(&m2_loc_pid,     0.02f, 0.000005f, 0.001f, -4.0f, 4.0f, 15.0f);
     Control_PID_Init(&m2_curq_pid,    40.0f, 0.3f, 0.0f, -32767.0f, 32767.0f, 25000);
-    Control_PID_Init(&m2_curd_pid,    10.0f, 0.6f, 0.0f, -32767.0f, 32767.0f, 25000);
+    Control_PID_Init(&m2_curd_pid,    40.0f, 0.6f, 0.0f, -32767.0f, 32767.0f, 25000);
     Control_PID_Init(&m2_direct_pid,  15.0f, 0.15f, 50.0f, -32767.0f, 32767.0f, 8000.0f);
     /* 创建电机 */
     FOC_3::PIDCtrl m2_pid;
