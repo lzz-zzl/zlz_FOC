@@ -326,6 +326,7 @@ void FOC_3::period() {
         m_speed = m_encoder->calc_speed_rpm_low_pass() / 60.0f;
         if (m_state == 3) {
             speed_pid_loop();
+
         }
         if (m_state == 4) {
             location_target_pid();
@@ -353,7 +354,7 @@ void FOC_3::period() {
         // elect_angle_analog(m_speed_analog);
         move(m_elect_angle);
     }
-    else if (m_state == 6) {
+    else if (m_state == 6 || m_state == 3) {
         if (driver_en) {
             current_pi_loop();
         }

@@ -151,13 +151,13 @@ static void FOC_3_test_task(void* /*argument*/) {
     //电机1
     static control_PID m1_speed_pid, m1_loc_pid, m1_curq_pid, m1_curd_pid, m1_direct_pid;
     /* 初始化三环 PID 参数 */
-    Control_PID_Init(&m1_speed_pid,   1200.0f, 20.0f, 0.0f, -32767.0f, 32767.0f, 10000.0f);
+    Control_PID_Init(&m1_speed_pid,   12.0f, 0.0f, 0.0f, -32767.0f, 32767.0f, 100.0f);
     Control_PID_Init(&m1_loc_pid,     0.02f, 0.000005f, 0.001f, -4.0f, 4.0f, 15.0f);
     Control_PID_Init(&m1_curq_pid,    40.0f, 0.3f, 0.0f, -32767.0f, 32767.0f, 25000);
     lowpass_Filter curOutFilter = {0.1f,0.0f};
     PID_EnableOutputFilter(&m1_curq_pid, lowpass_filter,&curOutFilter);
 
-    Control_PID_Init(&m1_curd_pid,    10.0f, 0.6f, 0.0f, -32767.0f, 32767.0f, 25000);
+    Control_PID_Init(&m1_curd_pid,    10.0f, 0.6f, 0.0f, -32767.0f, 32767.0f, 5000);
     Control_PID_Init(&m1_direct_pid,  15.0f, 0.15f, 50.0f, -32767.0f, 32767.0f, 8000.0f);
     /* 创建电机 */
     FOC_3::PIDCtrl m1_pid;
@@ -174,10 +174,10 @@ static void FOC_3_test_task(void* /*argument*/) {
     /* 创建 PID */
     static control_PID m2_speed_pid, m2_loc_pid, m2_curq_pid, m2_curd_pid, m2_direct_pid;
     /* 初始化三环 PID 参数 */
-    Control_PID_Init(&m2_speed_pid,   1200.0f, 20.0f, 0.0f, -32767.0f, 32767.0f, 10000.0f);
+    Control_PID_Init(&m2_speed_pid,   12.0f, 0.0f, 0.0f, -32767.0f, 32767.0f, 100.0f);
     Control_PID_Init(&m2_loc_pid,     0.02f, 0.000005f, 0.001f, -4.0f, 4.0f, 15.0f);
     Control_PID_Init(&m2_curq_pid,    40.0f, 0.3f, 0.0f, -32767.0f, 32767.0f, 25000);
-    Control_PID_Init(&m2_curd_pid,    40.0f, 0.6f, 0.0f, -32767.0f, 32767.0f, 25000);
+    Control_PID_Init(&m2_curd_pid,    40.0f, 0.6f, 0.0f, -32767.0f, 32767.0f, 5000);
     Control_PID_Init(&m2_direct_pid,  15.0f, 0.15f, 50.0f, -32767.0f, 32767.0f, 8000.0f);
     /* 创建电机 */
     FOC_3::PIDCtrl m2_pid;
@@ -270,9 +270,9 @@ static void task_printf(void * /*argument*/) {
         // temp[1] = test_i_b;
         // temp[2] = test_u_a;
         // temp[3] = test_u_b;
-        FOC_3::showPID_cur(temp);
-        temp[3] = test_curdata[0];
-        temp[4] = test_curdata[1];
+        FOC_3::showPID_speed(temp);
+        temp[3] = FOC_3::instances[0]->get_speed();
+        temp[4] = FOC_3::instances[0]->get_iq_target();
         temp[5] = test_curdata[2];
 
 
