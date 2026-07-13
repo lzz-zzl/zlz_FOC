@@ -173,8 +173,8 @@ static void FOC_3_test_task(void* /*argument*/) {
     /* 初始化三环 PID 参数 */
     Control_PID_Init(&m2_speed_pid,   1200.0f, 20.0f, 0.0f, -32767.0f, 32767.0f, 10000.0f);
     Control_PID_Init(&m2_loc_pid,     0.02f, 0.000005f, 0.001f, -4.0f, 4.0f, 15.0f);
-    Control_PID_Init(&m2_curq_pid,    40.0f, 0.3f, 0.0f, -32767.0f, 32767.0f, 15000);
-    Control_PID_Init(&m2_curd_pid,    10.0f, 0.6f, 0.0f, -32767.0f, 32767.0f, 15000);
+    Control_PID_Init(&m2_curq_pid,    40.0f, 0.3f, 0.0f, -32767.0f, 32767.0f, 25000);
+    Control_PID_Init(&m2_curd_pid,    10.0f, 0.6f, 0.0f, -32767.0f, 32767.0f, 25000);
     Control_PID_Init(&m2_direct_pid,  15.0f, 0.15f, 50.0f, -32767.0f, 32767.0f, 8000.0f);
     /* 创建电机 */
     FOC_3::PIDCtrl m2_pid;
@@ -243,7 +243,7 @@ extern int16_t test_u_c;
 extern int16_t test_i_d;
 extern int16_t test_i_q;
 extern int16_t test_i_a,test_i_b;
-
+extern float test_curdata[3];
 
 static void task_printf(void * /*argument*/) {
     osDelay(10);
@@ -256,18 +256,21 @@ static void task_printf(void * /*argument*/) {
         int16_t ia2 = I_Check_Get_M2_A();
         int16_t ib2 = I_Check_Get_M2_B();
 
-        float temp[5];
+        float temp[6];
         // temp[0] = FOC_3::instances[0]->get_elect_angle_A() *0.001;
         // temp[1] = FOC_3::instances[0]->get_elect_angle() *0.001;
-        temp[0] = test_i_q;
-        temp[1] = test_i_d;
-        temp[2] = FOC_3::instances[0]->get_iq_target() ;
-        temp[3] = FOC_3::instances[0]->get_uq()*1.0 ;
+        // temp[0] = test_i_q;
+        // temp[1] = test_i_d;
+        // temp[2] = FOC_3::instances[0]->get_iq_target() ;
+        // temp[3] = FOC_3::instances[0]->get_uq()*1.0 ;
         // temp[0] = test_i_a;
         // temp[1] = test_i_b;
         // temp[2] = test_u_a;
         // temp[3] = test_u_b;
-        temp[4] = 0;
+        FOC_3::showPID_cur(temp);
+        temp[3] = test_curdata[0];
+        temp[4] = test_curdata[1];
+        temp[5] = test_curdata[2];
 
 
         Serial_JustFloat(temp,5);

@@ -245,6 +245,7 @@ void FOC_3::current_park() {
     test_i_d = m_i_d_q15;
 }
 
+    float test_curdata[3];
 void FOC_3::current_pi_loop() {
     /* Q15 */
     float target = (float)m_i_q_target;
@@ -252,7 +253,7 @@ void FOC_3::current_pi_loop() {
         target += (float)m_cogging_table[m_elect_angle];
     m_current_q_obj.Target = target;
     m_current_q_obj.Actual = (float)m_i_q_q15;
-    m_uq = (int16_t)PID_Calculate(m_current_q_pid, &m_current_q_obj);
+    m_uq = (int16_t)PID_Calculate_debug(m_current_q_pid, &m_current_q_obj,test_curdata);
 
     m_current_d_obj.Target = 0.0f;
     m_current_d_obj.Actual = (float)m_i_d_q15;
@@ -263,10 +264,11 @@ void FOC_3::current_pi_loop() {
 /*                      PID 控制环                                              */
 /* ========================================================================== */
 
+
 void FOC_3::speed_pid_loop() {
     m_speed_obj.Target = m_speed_target;
     m_speed_obj.Actual = m_speed;
-    m_i_q_ref = PID_Calculate(m_speed_pid, &m_speed_obj);
+    m_i_q_target = PID_Calculate(m_speed_pid, &m_speed_obj);
 }
 
 void FOC_3::location_target_pid() {
@@ -319,9 +321,19 @@ void FOC_3::period() {
     // if (m_location > m_max_location+100 || m_location < m_min_location-100) {
     //     m_i_q_ref = 0; m_uq = 0; m_ud = 0;
     // }
-    //
-    if (m_state == 0) {
+    if (m_per_count % 15 == 0){
+        m_speed = m_encoder->calc_speed_rpm_low_pass() / 60.0f;
+        if (m_state == 3) {
+            speed_pid_loop();
+        }
+        if (m_state == 4) {
+            location_target_pid();
+        }
 
+        move(m_elect_angle);
+    }
+
+    if (m_state == 0) {
         m_uq = 0;
         m_ud = 0;
         move(m_elect_angle);
@@ -345,6 +357,8 @@ void FOC_3::period() {
         elect_angle_from_encoder();
         move(m_elect_angle);
     }
+
+
     /* ===== 齿槽补偿学习 (开环拖拽, 模拟角度) ===== */
     else if (m_state == 121) {
         static int16_t last_angle = -1;
@@ -378,10 +392,6 @@ void FOC_3::period() {
         if (m_cogging_rounds >= 5) {
             cogging_learn_stop();
         }
-    }
-    else if (m_state == 3 || m_state == 4 || m_state == 5) {
-        current_handle();
-        move(m_elect_angle);
     }
 
 
@@ -561,6 +571,26 @@ void FOC_3::parse_keyValue(char * cmd)
             }
         }
     }
+}
+/* ===================================调试信息==================================== */
+
+void FOC_3::showPID_cur(float *data) {
+    FOC_3 *m = instances[motorID_debug];
+    data[0] = m->m_current_q_obj.Target;
+    data[1] = m->m_current_q_obj.Actual;
+    data[2] = m->m_current_q_obj.Out;
+}
+void FOC_3::showPID_speed(float *data) {
+    FOC_3 *m = instances[motorID_debug];
+    data[0] = m->m_speed_obj.Target;
+    data[1] = m->m_speed_obj.Actual;
+    data[2] = m->m_speed_obj.Out;
+}
+void FOC_3::showPID_location(float *data) {
+    FOC_3 *m = instances[motorID_debug];
+    data[0] = m->m_location_obj.Target;
+    data[1] = m->m_location_obj.Actual;
+    data[2] = m->m_location_obj.Out;
 }
 
 void FOC_3::Motors_period() {

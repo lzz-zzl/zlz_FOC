@@ -104,6 +104,56 @@ float PID_Calculate(control_PID *pid, control_object *obj){
 
     return obj->Out;
 }
+float PID_Calculate_debug(control_PID *pid, control_object *obj, float *debug_data){
+    obj->Target = obj->Target; // Target 通常由外部赋值
+
+    if (pid->Actual_filter != NULL && pid->Actual_filter_para != NULL) {
+        obj->Actual = pid->Actual_filter(pid->Actual_filter_para, obj->Actual);
+    }
+
+    pid->Error_now = obj->Target - obj->Actual;
+    pid->Error_calculus += pid->Error_now;
+    if (pid->Er_weaken > 0 && pid->Er_weaken <= 1) {
+        pid->Error_calculus *=  pid->Er_weaken;
+    }
+    pid->Error_output = pid->ki * pid->Error_calculus ;
+
+    if (pid->Error_output > pid->ErMax &&  pid->ErMax != 0) {
+        pid->Error_output = pid->ErMax;
+    } else if (pid->Error_output < pid->ErMin &&  pid->ErMax != 0) {
+        pid->Error_output = pid->ErMin;
+    }
+
+
+    float derivative = pid->Error_now - pid->Error_pass;
+
+    if (pid->Derivative_filter != NULL && pid->Derivative_filter_para != NULL) {
+        derivative = pid->Derivative_filter(pid->Derivative_filter_para, derivative);
+    }
+    debug_data[0] = pid->kp * pid->Error_now;
+    debug_data[1] = pid->Error_output;
+    debug_data[2] = pid->kd * derivative;
+
+    obj->Out =debug_data[0] +
+              debug_data[1] +
+                  debug_data[2];
+
+    if (obj->Out > pid->OutMax) {
+        obj->Out = pid->OutMax;
+    } else if (obj->Out < pid->OutMin) {
+        obj->Out = pid->OutMin;
+    }
+
+    if (pid->Output_filter != NULL && pid->Output_filter_para != NULL) {
+        obj->Out = pid->Output_filter(pid->Output_filter_para, obj->Out);
+    }
+
+    pid->Error_pass = pid->Error_now;
+
+    return obj->Out;
+}
+
+
 
 float PID_Calculate_DerivativeOnMeasure(control_PID *pid, control_object *obj)
 {

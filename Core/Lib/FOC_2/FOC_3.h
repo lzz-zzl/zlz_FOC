@@ -100,6 +100,10 @@ public:
     /* ---------- 调试 ---------- */
     void elect_angle_analog(float rad_s);
     void elect_angle_from_encoder();
+    static void showPID_cur(float *data);
+    static void showPID_speed(float *data);
+    static void showPID_location(float *data);
+
 
     /* 串口命令解析 (VOFA+ 键值对) */
     static void parse_keyValue(char * cmd);

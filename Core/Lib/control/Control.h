@@ -64,6 +64,7 @@ void PID_EnableOutputFilter(control_PID *pid, filter_fun_p filter, void *para);
 
 
 float PID_Calculate(control_PID *pid, control_object *obj);
+float PID_Calculate_debug(control_PID *pid, control_object *obj, float *debug_data);
 float PID_Calculate_DerivativeOnMeasure(control_PID *pid, control_object *obj);
 float PID_I_deadband_Calculate(control_PID *pid, control_object *obj);
 
