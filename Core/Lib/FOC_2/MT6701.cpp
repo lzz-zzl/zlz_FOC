@@ -35,7 +35,7 @@
 
 /* 粗略延时: 168MHz 下约 1 µs (根据实际编译优化可能需要调整) */
 static inline void delay_us(uint32_t us) {
-    for (uint32_t i = 0; i < us * 42; i++) {
+    for (uint32_t i = 0; i < us * 2; i++) {
         __NOP();
     }
 }
@@ -138,11 +138,35 @@ int16_t MT6701::ssi_read_angle_fast() {
     delay_us(2);
 
     SPI_TypeDef *spi = m_hspi->Instance;
-    spi->DR = 0;
-    while (!(spi->SR & SPI_SR_RXNE));
-    uint8_t b1 = (uint8_t)spi->DR;
-    while (!(spi->SR & SPI_SR_RXNE));
-    uint8_t b2 = (uint8_t)spi->DR;
+
+    /* 确保 SPI 已使能 */
+    if (!(spi->CR1 & SPI_CR1_SPE))
+        __HAL_SPI_ENABLE(m_hspi);
+
+    /* 清除残留标志 (读 SR 再读 DR 清 RXNE/OVR) */
+    (void)spi->SR;
+    (void)spi->DR;
+
+    uint32_t timeout;
+
+    /* 字节 1 */
+    timeout = 10000; while (!(spi->SR & SPI_SR_TXE) && timeout--);
+    if (!timeout) { cs_deassert(); return m_angle_14bit; }
+    *(__IO uint8_t *)&spi->DR = 0;
+
+    timeout = 10000; while (!(spi->SR & SPI_SR_RXNE) && timeout--);
+    if (!timeout) { cs_deassert(); return m_angle_14bit; }
+    uint8_t b1 = *(__IO uint8_t *)&spi->DR;
+
+    /* 字节 2 */
+    timeout = 10000; while (!(spi->SR & SPI_SR_TXE) && timeout--);
+    if (!timeout) { cs_deassert(); return m_angle_14bit; }
+    *(__IO uint8_t *)&spi->DR = 0;
+
+    timeout = 10000; while (!(spi->SR & SPI_SR_RXNE) && timeout--);
+    if (!timeout) { cs_deassert(); return m_angle_14bit; }
+    uint8_t b2 = *(__IO uint8_t *)&spi->DR;
+
     uint16_t rx = ((uint16_t)b1 << 8) | b2;
 
     cs_deassert();
@@ -158,7 +182,7 @@ int16_t MT6701::read_raw_angle() {
 /* ========================================================================== */
 
 int16_t MT6701::refresh_raw() {
-    m_angle_14bit = ssi_read_angle();
+    m_angle_14bit = ssi_read_angle_fast();
     return m_angle_14bit;
 }
 

@@ -307,12 +307,14 @@ void I_check_M2(int16_t* m2a,int16_t *m2b) {
     *m2a = s_m2_a;
     *m2b = s_m2_b;
 }
-#define alpha_10    1
+#define alpha_m    1
+#define alpha_d    20
+
 void I_check_lowpass_M2(int16_t* m2a,int16_t *m2b) {
     static int16_t m2a_last = 0;
     static int16_t m2b_last = 0;
-    *m2a = (s_m2_a*alpha_10+m2a_last*(10-alpha_10))/10;
-    *m2b = (s_m2_b*alpha_10+m2b_last*(10-alpha_10))/10;
+    *m2a = (s_m2_a*alpha_10+m2a_last*(alpha_d-alpha_10))/alpha_d;
+    *m2b = (s_m2_b*alpha_10+m2b_last*(alpha_d-alpha_10))/alpha_d;
 }
 int16_t I_Check_Get_Offset_M1_A(void)  { return s_off_m1_a; }
 int16_t I_Check_Get_Offset_M1_B(void)  { return s_off_m1_b; }

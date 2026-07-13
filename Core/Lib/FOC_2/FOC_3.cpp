@@ -303,7 +303,7 @@ void FOC_3::direct_location_pid() {
 /* ========================================================================== */
 
 void FOC_3::period() {
-    if (m_per_count % 4 == 0) m_location = m_encoder->refresh_raw();
+    m_location = m_encoder->refresh_raw();
     elect_angle_from_encoder();
     current_handle();
     int16_t m_i_a, m_i_b;
