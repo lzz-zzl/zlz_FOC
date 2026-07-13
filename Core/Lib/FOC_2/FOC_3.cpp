@@ -323,7 +323,7 @@ void FOC_3::period() {
     //     m_i_q_ref = 0; m_uq = 0; m_ud = 0;
     // }
     if (m_per_count % 15 == 0){
-        m_speed = m_encoder->calc_speed_rpm_low_pass() / 60.0f;
+        m_speed = m_encoder->calc_speed_rpm() / 60.0f;
         if (m_state == 3) {
             speed_pid_loop();
 
@@ -354,7 +354,7 @@ void FOC_3::period() {
         // elect_angle_analog(m_speed_analog);
         move(m_elect_angle);
     }
-    else if (m_state == 6 || m_state == 3) {
+    else if (m_state == 6 || m_state == 3|| m_state == 4) {
         if (driver_en) {
             current_pi_loop();
         }
