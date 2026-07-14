@@ -283,10 +283,7 @@ void FOC_3::location_target_pid() {
     m_location_obj.Target = (float)(m_location + pos_err);
     m_location_obj.Actual = (float)m_location;
 
-    float loc_speed = PID_Calculate(m_location_pid, &m_location_obj);
-    m_speed_obj.Target = loc_speed;
-    m_speed_obj.Actual = m_speed;
-    m_i_q_ref = PID_Calculate(m_speed_pid, &m_speed_obj);
+    m_speed_target = PID_Calculate(m_location_pid, &m_location_obj);
 }
 
 void FOC_3::direct_location_pid() {
@@ -310,29 +307,18 @@ void FOC_3::period() {
     int16_t m_i_a, m_i_b;
     m_per_count++;
 
-    // if (m_per_count >= 30) {
-    //     m_per_count = 0;
-    //     m_speed = m_encoder->calc_speed_rpm_low_pass() / 60.0f;
-    //
-    //     if (m_state == 3) speed_pid_loop();
-    //     if (m_state == 4) location_target_pid();
-    //     if (m_state == 5) direct_location_pid();
-    // }
-
-    // if (m_location > m_max_location+100 || m_location < m_min_location-100) {
-    //     m_i_q_ref = 0; m_uq = 0; m_ud = 0;
-    // }
-    if (m_per_count % 15 == 0){
+    if (m_per_count % 60 == 0) {
+         if (m_state == 4) {
+             location_target_pid();
+             move(m_elect_angle);
+         }
+    }
+    if (m_per_count % 15 == 0) {
         m_speed = m_encoder->calc_speed_rpm() / 60.0f;
-        if (m_state == 3) {
+        if (m_state == 3 || m_state == 4) {
             speed_pid_loop();
-
+            move(m_elect_angle);
         }
-        if (m_state == 4) {
-            location_target_pid();
-        }
-
-        move(m_elect_angle);
     }
 
     if (m_state == 0) {

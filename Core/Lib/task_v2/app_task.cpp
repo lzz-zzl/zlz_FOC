@@ -123,7 +123,7 @@ static void FOC_3_test_task(void* /*argument*/) {
     static control_PID m1_speed_pid, m1_loc_pid, m1_curq_pid, m1_curd_pid, m1_direct_pid;
     /* 初始化三环 PID 参数 */
     Control_PID_Init(&m1_speed_pid,   300.0f, 50.0f, 0.0f, -32767.0f, 32767.0f, 2000.0f,2000.0f);
-    Control_PID_Init(&m1_loc_pid,     0.02f, 0.000005f, 0.001f, -4.0f, 4.0f,1.0f, 15.0f);
+    Control_PID_Init(&m1_loc_pid,     0.002f, 0.000005f, 0.001f, -4.0f, 4.0f,1.0f, 15.0f);
     Control_PID_Init(&m1_curq_pid,    1.0f, 0.04f, 0.0f, -32767.0f, 32767.0f, 250,20000);
     // lowpass_Filter curOutFilter = {0.1f,0.0f};
     // PID_EnableOutputFilter(&m1_curq_pid, lowpass_filter,&curOutFilter);
@@ -240,7 +240,7 @@ static void task_printf(void * /*argument*/) {
         // temp[3] = ib;
         // temp[2] = test_u_a;
         // temp[3] = test_u_b;
-        FOC_3::showPID_cur(temp);
+        FOC_3::showPID_location(temp);
         temp[4] = test_curdata[1];
         // temp[4] = FOC_3::instances[0]->get_iq_target();
         // temp[5] = test_curdata[2];
