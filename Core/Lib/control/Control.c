@@ -14,7 +14,7 @@ float lowpass_filter(void *para, float input)
 
 //PID控制部分
 void Control_PID_Init(control_PID *pid, float kp, float ki, float kd,
-              float out_min, float out_max, float er_limit)
+              float out_min, float out_max, float er_limit,float er_cal_limit)
 {
     pid->kp = kp;
     pid->ki = ki;
@@ -24,8 +24,8 @@ void Control_PID_Init(control_PID *pid, float kp, float ki, float kd,
     pid->OutMax = out_max;
 
     pid->Er_limit = er_limit;
-    pid->ErMax = er_limit;
-    pid->ErMin = -er_limit;
+    pid->ErMax = er_cal_limit;
+    pid->ErMin = -er_cal_limit;
     pid->Er_weaken = 0.0f;
 
     pid->Error_now = 0.0f;
@@ -35,6 +35,7 @@ void Control_PID_Init(control_PID *pid, float kp, float ki, float kd,
     pid->Error_now = 0.0f;
     pid->Error_pass = 0.0f;
     pid->Error_calculus = 0.0f;
+    pid->Error_output = 0.0f;
 
     pid->Actual_filter = NULL;
     pid->Actual_filter_para = NULL;
@@ -67,7 +68,14 @@ float PID_Calculate(control_PID *pid, control_object *obj){
     }
 
     pid->Error_now = obj->Target - obj->Actual;
-    pid->Error_calculus += pid->Error_now;
+
+    /* 误差输入限幅，防止 15kHz 下积分快速饱和 */
+    float err_i = pid->Error_now;
+    if (pid->Er_limit > 0.0f) {
+        if (err_i > pid->Er_limit)  err_i = pid->Er_limit;
+        if (err_i < -pid->Er_limit) err_i = -pid->Er_limit;
+    }
+    pid->Error_calculus += err_i;
     if (pid->Er_weaken > 0 && pid->Er_weaken <= 1) {
         pid->Error_calculus *=  pid->Er_weaken;
     }
@@ -111,7 +119,13 @@ float PID_Calculate_debug(control_PID *pid, control_object *obj, float *debug_da
     }
 
     pid->Error_now = obj->Target - obj->Actual;
-    pid->Error_calculus += pid->Error_now;
+
+    float err_i = pid->Error_now;
+    if (pid->Er_limit > 0.0f) {
+        if (err_i > pid->Er_limit)  err_i = pid->Er_limit;
+        if (err_i < -pid->Er_limit) err_i = -pid->Er_limit;
+    }
+    pid->Error_calculus += err_i;
     if (pid->Er_weaken > 0 && pid->Er_weaken <= 1) {
         pid->Error_calculus *=  pid->Er_weaken;
     }
@@ -162,8 +176,12 @@ float PID_Calculate_DerivativeOnMeasure(control_PID *pid, control_object *obj)
 
     pid->Error_now = obj->Target - obj->Actual;
 
-    pid->Error_calculus += pid->Error_now;
-
+    float err_i = pid->Error_now;
+    if (pid->Er_limit > 0.0f) {
+        if (err_i > pid->Er_limit)  err_i = pid->Er_limit;
+        if (err_i < -pid->Er_limit) err_i = -pid->Er_limit;
+    }
+    pid->Error_calculus += err_i;
 
     if (pid->Error_calculus > pid->ErMax) {
         pid->Error_calculus = pid->ErMax;
@@ -211,8 +229,13 @@ float PID_I_deadband_Calculate(control_PID *pid, control_object *obj){
 
     pid->Error_now = obj->Target - obj->Actual;
 
+    float err_i = pid->Error_now;
+    if (pid->Er_limit > 0.0f) {
+        if (err_i > pid->Er_limit)  err_i = pid->Er_limit;
+        if (err_i < -pid->Er_limit) err_i = -pid->Er_limit;
+    }
     if (pid->Error_now > I_deadband || pid->Error_now < -I_deadband) {
-        pid->Error_calculus += pid->Error_now;
+        pid->Error_calculus += err_i;
     }
 
     if (pid->Error_calculus > pid->ErMax) {

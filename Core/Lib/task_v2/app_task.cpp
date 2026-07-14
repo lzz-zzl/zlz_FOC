@@ -10,13 +10,13 @@
 extern "C" {
 #include "OLED.h"
 #include "Serial.h"
-#include "FOC_2.h"
 #include "MT6701.h"
 #include "JY61P.h"
 #include "check_I.h"
 #include "spi.h"
 #include "usart.h"
 #include "tim.h"
+#include "Control.h"
 }
 
 
@@ -24,9 +24,7 @@ extern "C" {
 extern uint16_t tim5_count;
 extern uint16_t adc_dma_count;
 
-#include <cstdint>
 #include "FOC_3.h"
-#include "Control.h"
 
 uint8_t *test_data = NULL;
 void set_testdata(uint8_t * p) {
@@ -57,7 +55,6 @@ namespace config {
 // 外部全局变量声明
 // ====================================================================
 extern int16_t  Uq, Ud;
-extern float    FOC_speed;
 extern uint16_t FOC_count;
 extern uint8_t  Serial_key[];
 extern uint16_t Serial_value[];
@@ -116,32 +113,6 @@ static void OLEDTaskFunc(void* /*argument*/) {
     }
 }
 
-static void SerialTaskFunc(void* /*argument*/) {
-    Serial_Init();
-    // osDelay(200);  // 等外设稳定
-    // Serial_Printf("[boot]USART1 ready at 115200\r\n");
-    for (;;) {
-        osSemaphoreAcquire(uart_sem, osWaitForever);
-
-        // Serial_GET_order();
-
-
-        static uint16_t serial_count = 0;
-        serial_count++;
-        OLED_ShowNum(4, 15, serial_count, 2);
-
-        FOC_SET_state(Serial_value[1]);
-        FOC_Set_Uq(Serial_slider[0] * 100);
-
-        if ((FOC_GET_state() == 4 || FOC_GET_state() == 5) && Serial_key[1] != 1) {
-            FOC_SET_rela_location(static_cast<int16_t>(Serial_slider[2]));
-        }
-
-        FOC_SET_speed_target(Serial_slider[1]);
-    }
-}
-
-
 
 
 static void FOC_3_test_task(void* /*argument*/) {
@@ -151,14 +122,14 @@ static void FOC_3_test_task(void* /*argument*/) {
     //电机1
     static control_PID m1_speed_pid, m1_loc_pid, m1_curq_pid, m1_curd_pid, m1_direct_pid;
     /* 初始化三环 PID 参数 */
-    Control_PID_Init(&m1_speed_pid,   300.0f, 50.0f, 0.0f, -32767.0f, 32767.0f, 2000.0f);
-    Control_PID_Init(&m1_loc_pid,     0.02f, 0.000005f, 0.001f, -4.0f, 4.0f, 15.0f);
-    Control_PID_Init(&m1_curq_pid,    80.0f, 0.3f, 0.0f, -32767.0f, 32767.0f, 25000);
+    Control_PID_Init(&m1_speed_pid,   300.0f, 50.0f, 0.0f, -32767.0f, 32767.0f, 2000.0f,2000.0f);
+    Control_PID_Init(&m1_loc_pid,     0.02f, 0.000005f, 0.001f, -4.0f, 4.0f,1.0f, 15.0f);
+    Control_PID_Init(&m1_curq_pid,    1.0f, 0.04f, 0.0f, -32767.0f, 32767.0f, 250,20000);
     // lowpass_Filter curOutFilter = {0.1f,0.0f};
     // PID_EnableOutputFilter(&m1_curq_pid, lowpass_filter,&curOutFilter);
 
-    Control_PID_Init(&m1_curd_pid,    10.0f, 0.6f, 0.0f, -32767.0f, 32767.0f, 5000);
-    Control_PID_Init(&m1_direct_pid,  15.0f, 0.15f, 50.0f, -32767.0f, 32767.0f, 8000.0f);
+    Control_PID_Init(&m1_curd_pid,    1.0f, 0.04f, 0.0f, -32767.0f, 32767.0f, 5000,5000);
+    Control_PID_Init(&m1_direct_pid,  15.0f, 0.15f, 50.0f, -32767.0f, 32767.0f, 8000.0f,5000);
     /* 创建电机 */
     FOC_3::PIDCtrl m1_pid;
     m1_pid.speed     = &m1_speed_pid;
@@ -167,18 +138,18 @@ static void FOC_3_test_task(void* /*argument*/) {
     m1_pid.current_q = &m1_curq_pid;
     m1_pid.current_d = &m1_curd_pid;
     static MT6701 m1_enc({&hspi1, GPIOD, GPIO_PIN_7});
-    static FOC_3 motor1({&m1_enc,I_check_M1, &htim1, &htim5, 11, 12.0f, 7.5f, 1.7f, 0, "motor1"});
+    static FOC_3 motor1({&m1_enc,I_check_lowpass_M1, &htim1, &htim5, 11, 12.0f, 7.5f, 1.7f, 0, "motor1"});
     motor1.init(m1_pid);
 
     //电机2
     /* 创建 PID */
     static control_PID m2_speed_pid, m2_loc_pid, m2_curq_pid, m2_curd_pid, m2_direct_pid;
     /* 初始化三环 PID 参数 */
-    Control_PID_Init(&m2_speed_pid,   300.0f, 50.0f, 0.0f, -32767.0f, 32767.0f, 2000.0f);
-    Control_PID_Init(&m2_loc_pid,     0.02f, 0.000005f, 0.001f, -4.0f, 4.0f, 15.0f);
-    Control_PID_Init(&m2_curq_pid,    80.0f, 20.0f, 0.0f, -32767.0f, 32767.0f, 25000);
-    Control_PID_Init(&m2_curd_pid,    40.0f, 0.6f, 0.0f, -32767.0f, 32767.0f, 5000);
-    Control_PID_Init(&m2_direct_pid,  15.0f, 0.15f, 50.0f, -32767.0f, 32767.0f, 8000.0f);
+    Control_PID_Init(&m2_speed_pid,   300.0f, 50.0f, 0.0f, -32767.0f, 32767.0f, 2000.0f,2000.0f);
+    Control_PID_Init(&m2_loc_pid,     0.02f, 0.000005f, 0.001f, -4.0f, 4.0f, 15.0f,15.0f);
+    Control_PID_Init(&m2_curq_pid,    80.0f, 20.0f, 0.0f, -32767.0f, 32767.0f, 2500.0f,2500.0f);
+    Control_PID_Init(&m2_curd_pid,    40.0f, 0.6f, 0.0f, -32767.0f, 32767.0f, 5000.0f,5000.0f);
+    Control_PID_Init(&m2_direct_pid,  15.0f, 0.15f, 50.0f, -32767.0f, 32767.0f, 8000.0f,8000.0f);
     /* 创建电机 */
     FOC_3::PIDCtrl m2_pid;
     m2_pid.speed     = &m2_speed_pid;
@@ -252,7 +223,6 @@ static void task_printf(void * /*argument*/) {
     osDelay(10);
     for (;;) {
         float datas[1];
-        datas[0] = FOC_speed;
         // Serial_JustFloat(datas,1);
         int16_t ia = I_Check_Get_M1_A();
         int16_t ib = I_Check_Get_M1_B();
@@ -262,16 +232,16 @@ static void task_printf(void * /*argument*/) {
         float temp[6];
         // temp[0] = FOC_3::instances[0]->get_elect_angle_A() *0.001;
         // temp[1] = FOC_3::instances[0]->get_elect_angle() *0.001;
-        temp[0] = test_i_q;
-        temp[1] = test_i_d;
+        // temp[0] = test_i_q;
+        // temp[1] = test_i_d;
         // temp[2] = FOC_3::instances[0]->get_iq_target() ;
         // temp[3] = FOC_3::instances[0]->get_uq()*1.0 ;
-        temp[2] = ia;
-        temp[3] = ib;
+        // temp[2] = ia;
+        // temp[3] = ib;
         // temp[2] = test_u_a;
         // temp[3] = test_u_b;
-        // FOC_3::showPID_cur(temp);
-        // temp[3] = test_curdata[1];
+        FOC_3::showPID_cur(temp);
+        temp[4] = test_curdata[1];
         // temp[4] = FOC_3::instances[0]->get_iq_target();
         // temp[5] = test_curdata[2];
 

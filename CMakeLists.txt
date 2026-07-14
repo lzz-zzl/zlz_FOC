@@ -76,8 +76,8 @@ message(STATUS "Found Lib sources: ${Lib_SOURCES}")
 add_executable(${CMAKE_PROJECT_NAME}
         ${Lib_SOURCES}
         FreeRTOSConfig.h
-        Core/Lib/FOC_2/FOC_3.cpp
-        Core/Lib/FOC_2/FOC_3.h
+        Core/Lib/FOC_3/FOC_3.cpp
+        Core/Lib/FOC_3/FOC_3.h
 )
 
 # Add STM32CubeMX generated sources

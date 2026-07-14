@@ -254,7 +254,7 @@ void FOC_3::current_pi_loop() {
         target += (float)m_cogging_table[m_elect_angle];
     m_current_q_obj.Target = target;
     m_current_q_obj.Actual = (float)m_i_q_q15;
-    m_uq = m_i_q_target +(int16_t)PID_Calculate_debug(m_current_q_pid, &m_current_q_obj,test_curdata) +m_i_q_target*14 ;
+    m_uq = m_i_q_target +(int16_t)PID_Calculate_debug(m_current_q_pid, &m_current_q_obj,test_curdata) ;
 
     m_current_d_obj.Target = 0.0f;
     m_current_d_obj.Actual = (float)m_i_d_q15;

@@ -55,7 +55,7 @@ float lowpass_filter(void *para, float input);
 
 
 void Control_PID_Init(control_PID *pid, float kp, float ki, float kd,
-              float out_min, float out_max, float er_limit);
+              float out_min, float out_max, float er_limit, float er_cal_limit);
 
 void PID_EnableActualFilter(control_PID *pid,filter_fun_p filter, void *para);
 void PID_EnableDerivativeFilter(control_PID *pid, filter_fun_p filter, void *para);  // 3个参数
