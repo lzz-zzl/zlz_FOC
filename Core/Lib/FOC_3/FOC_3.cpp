@@ -565,6 +565,17 @@ void FOC_3::parse_keyValue(char * cmd)
             PID_Reset(m->m_location_pid);
             PID_Reset(m->m_speed_pid);
         }
+        else if (strcmp(key, "xypos") == 0) {
+            /* 格式: xylocation:<x>,<y>  → x→motor0位置, y→motor1位置 */
+            char *x_str = strtok(val_str, ",");
+            char *y_str = strtok(NULL, ",");
+            if (x_str && y_str) {
+                FOC_3 *mx = instances[1];
+                FOC_3 *my = instances[0];
+                if (mx) { mx->m_location_target = -(int16_t)atoi(x_str); mx->m_state = 4; }
+                if (my) { my->m_location_target = -(int16_t)atoi(y_str); my->m_state = 4; }
+            }
+        }
 
         /* ===== 齿槽补偿命令 ===== */
         else if (strcmp(key, "cogging") == 0) {
