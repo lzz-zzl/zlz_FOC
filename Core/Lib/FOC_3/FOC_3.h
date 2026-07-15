@@ -64,6 +64,9 @@ public:
     float    get_speed_target() const    { return m_speed_target; }
 
     void     set_location_target(int16_t v) { m_location_target = v; }
+    void     set_location_zero(int16_t v) { m_rela_location_zero = v; }
+    void      set_max_location(int16_t v) { m_max_location = v; }
+    void      set_min_location(int16_t v) { m_min_location = v; }
     int16_t  get_location_target() const    { return m_location_target; }
 
     void     set_uq(int16_t v) { m_uq = v; }

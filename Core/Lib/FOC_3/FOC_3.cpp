@@ -46,9 +46,9 @@ FOC_3::FOC_3(const Config &cfg)
       m_speed_target(0.0f),
       m_elect_angle(0),
       m_elect_angle_zero(11101),
-      m_rela_location_zero(11595),
-      m_max_location(16383),
-      m_min_location(0),
+      m_rela_location_zero(0),
+      m_max_location(8191),
+      m_min_location(-8192),
       m_location_target_state(0),
       m_per_count(0),
       m_check_wire_count(0),
@@ -119,7 +119,7 @@ void FOC_3::elect_angle_zero_calibration() {
 
     m_enable();
     m_state = 1;
-    m_ud = 3000;
+    m_ud = 6000;
     m_uq = 0;
     move(0);
     osDelay(600);
@@ -301,7 +301,16 @@ void FOC_3::direct_location_pid() {
 /* ========================================================================== */
 
 void FOC_3::period() {
-    m_location = m_encoder->refresh_raw();
+    int16_t m_location_temp = m_encoder->refresh_raw()- m_rela_location_zero;
+    if (m_location_temp > 8191) {
+        m_location = m_location_temp - 16384;
+    } else if (m_location_temp < -8191) {
+        m_location = m_location_temp + 16384;
+    } else {
+        m_location = m_location_temp;
+    }
+
+
     elect_angle_from_encoder();
     current_handle();
     int16_t m_i_a, m_i_b;
@@ -539,6 +548,12 @@ void FOC_3::parse_keyValue(char * cmd)
             Serial_SendVar("pid",pid_debug);
             // Serial_SendVar("kd", pid->kd);
         }
+        /* ===== 设置命令 ===== */
+        else if (strcmp(key, "location_zero") == 0) {
+            m->set_location_zero(m->m_encoder->get_angle_14bit());
+            m->set_location_target(0);
+        }
+
         /* ===== 齿槽补偿命令 ===== */
         else if (strcmp(key, "cogging") == 0) {
             if ((int)val == 1) m->cogging_learn_start();
