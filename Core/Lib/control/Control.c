@@ -272,3 +272,10 @@ float PID_I_deadband_Calculate(control_PID *pid, control_object *obj){
 
     return obj->Out;
 }
+
+void PID_Reset(control_PID *pid) {
+    pid->Error_now = 0;
+    pid->Error_pass = 0;
+    pid->Error_calculus = 0;
+    pid->Error_output = 0;
+}

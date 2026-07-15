@@ -142,11 +142,12 @@ void FOC_3::elect_angle_zero_calibration() {
 /* ========================================================================== */
 
 void FOC_3::elect_angle_from_encoder() {
+    int16_t raw = m_encoder->get_angle_14bit();
     uint16_t temp = 0;
-    if (m_location >= m_elect_angle_zero)
-        temp = m_location - m_elect_angle_zero;
+    if (raw >= m_elect_angle_zero)
+        temp = raw - m_elect_angle_zero;
     else
-        temp = m_location + MT6701::RESOLUTION - m_elect_angle_zero;
+        temp = raw + MT6701::RESOLUTION - m_elect_angle_zero;
 
     m_elect_angle = (int16_t)(((int32_t)temp * m_pole_pairs * 360 / (MT6701::RESOLUTION - 1)) % 360);
 }
@@ -268,6 +269,8 @@ void FOC_3::current_pi_loop() {
 
 void FOC_3::speed_pid_loop() {
     m_speed_obj.Target = m_speed_target;
+    if (m_location>m_max_location+500 || m_location<m_min_location-500){m_speed_obj.Target=0;}
+
     m_speed_obj.Actual = m_speed;
     m_i_q_target = PID_Calculate(m_speed_pid, &m_speed_obj);
 }
@@ -316,7 +319,7 @@ void FOC_3::period() {
     int16_t m_i_a, m_i_b;
     m_per_count++;
 
-    if (m_per_count % 60 == 0) {
+    if (m_per_count % 30 == 0) {
          if (m_state == 4) {
              location_target_pid();
              move(m_elect_angle);
@@ -475,6 +478,13 @@ void FOC_3::parse_keyValue(char * cmd)
         m_disable();
     }else if (strcmp(key, "start") == 0) {
         driver_en = true;
+        for (uint8_t i = 0; i < 4; i++) {
+            if (instances[i]) {
+                PID_Reset(instances[i]->m_speed_pid);
+                PID_Reset(instances[i]->m_location_pid);
+                PID_Reset(instances[i]->m_current_q_pid);
+            }
+        }
         m_enable();
     }
     FOC_3 *m = instances[motorID_debug];
@@ -552,6 +562,8 @@ void FOC_3::parse_keyValue(char * cmd)
         else if (strcmp(key, "location_zero") == 0) {
             m->set_location_zero(m->m_encoder->get_angle_14bit());
             m->set_location_target(0);
+            PID_Reset(m->m_location_pid);
+            PID_Reset(m->m_speed_pid);
         }
 
         /* ===== 齿槽补偿命令 ===== */
