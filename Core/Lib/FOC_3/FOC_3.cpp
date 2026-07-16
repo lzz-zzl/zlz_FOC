@@ -107,7 +107,7 @@ void FOC_3::init(const PIDCtrl &pid) {
     set_volt(0, 0, 0);
 
     HAL_TIM_Base_Start_IT(m_htim_pwm);
-    HAL_TIM_Base_Start_IT(m_htim_ctrl);
+    HAL_TIM_Base_Start(m_htim_ctrl);        /* TIM5 计数但不进中断 */
 }
 
 /* ========================================================================== */
@@ -132,7 +132,7 @@ void FOC_3::elect_angle_zero_calibration() {
     set_volt(0, 0, 0);
     m_state = 0;
     m_disable();
-    HAL_TIM_Base_Start_IT(m_htim_ctrl);
+    HAL_TIM_Base_Start(m_htim_ctrl);        /* TIM5 计数但不进中断 */
     int16_t before = m_encoder->refresh_raw();  // 使能前读一次
     Serial_SendVar("before", before);
 }
@@ -304,6 +304,7 @@ void FOC_3::direct_location_pid() {
 /* ========================================================================== */
 
 void FOC_3::period() {
+    tim_dif_start(1);
     int16_t m_location_temp = m_encoder->refresh_raw()- m_rela_location_zero;
     if (m_location_temp > 8191) {
         m_location = m_location_temp - 16384;
@@ -408,6 +409,7 @@ void FOC_3::period() {
     else if (m_state == 113) {
         m_uq = 0; m_ud = 0;
     }
+    tim_dif_stop(1);
 }
 
 /* ========================================================================== */

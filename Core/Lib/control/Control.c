@@ -1,5 +1,6 @@
 // ... existing code ...
 #include "Control.h"
+#include "tim.h"
 
 float none_filter(void *para, float input) {
     return input;
@@ -278,4 +279,27 @@ void PID_Reset(control_PID *pid) {
     pid->Error_pass = 0;
     pid->Error_calculus = 0;
     pid->Error_output = 0;
+}
+
+void control_tim_start() {
+    HAL_TIM_Base_Start(&htim5);
+}
+
+static uint32_t c_tim_count = 0;
+uint32_t get_c_tim_count() {
+    c_tim_count = TIM5->CNT;
+    return c_tim_count;
+}
+uint32_t tim_dif_start_p[5];
+uint32_t tim_dif[5];
+
+uint32_t get_tim_dif(uint8_t i) {
+    return tim_dif[i];
+}
+void tim_dif_start(uint8_t i) {
+    tim_dif_start_p[i] = get_c_tim_count();
+}
+uint32_t tim_dif_stop(uint8_t i) {
+    tim_dif[i] = get_c_tim_count() - tim_dif_start_p[i];
+    return tim_dif[i];
 }

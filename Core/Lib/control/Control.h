@@ -69,6 +69,14 @@ float PID_I_deadband_Calculate(control_PID *pid, control_object *obj);
 
 void PID_Reset(control_PID *pid);
 
+    void control_tim_start();
+uint32_t get_c_tim_count();
+uint32_t get_tim_dif(uint8_t i);
+void tim_dif_start(uint8_t i);
+uint32_t tim_dif_stop(uint8_t i);
+
+
+
 #ifdef __cplusplus
 }
 #endif  

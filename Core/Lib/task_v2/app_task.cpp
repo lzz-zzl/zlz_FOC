@@ -101,7 +101,7 @@ static void OLEDTaskFunc(void* /*argument*/) {
             OLED_ShowNum(3, 9, m->get_encode_val(), 5);
 
             /* 行4: Ia:+123 Ib:-045 */
-            OLED_ShowNum(4, 1, m->get_elect_angle_zero(), 5);
+            OLED_ShowNum(4, 1,get_tim_dif(1), 5);
             OLED_ShowNum(4, 8,adc_dma_count, 3);
             OLED_ShowNum(4, 13,FOC_3::pid_debug, 3);
         } else {
@@ -119,6 +119,7 @@ static void OLEDTaskFunc(void* /*argument*/) {
 static void FOC_3_test_task(void* /*argument*/) {
 
     Serial_Init();
+    control_tim_start();
 
     //电机1
     static control_PID m1_speed_pid, m1_loc_pid, m1_curq_pid, m1_curd_pid, m1_direct_pid;
