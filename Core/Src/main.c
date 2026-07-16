@@ -166,12 +166,13 @@ int main(void)
   MX_USART3_UART_Init();
   MX_USART6_UART_Init();
   MX_TIM6_Init();
+  MX_TIM3_Init();
   /* USER CODE BEGIN 2 */
   HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, GPIO_PIN_SET);
 
   // HAL_ADC_Start(&hadc1);
   // HAL_TIM_Base_Start_IT(&htim2);
-  HAL_TIM_Base_Start_IT(&htim5);
+  // HAL_TIM_Base_Start_IT(&htim5); // 不再需要 TIM5, 改用 TIM3 触发 ADC
 
   I_Check_Init();
   I_Check_Start();

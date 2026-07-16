@@ -7,8 +7,8 @@
 // 双电机 × 两相:
 //   电机1: IN6(PA6)=A相, IN7(PA7)=B相
 //   电机2: IN8(PB0)=A相, IN9(PB1)=B相
-// 触发:  TIM5_CH1 OC1REF 上升沿 (PA0 AF2 PWM, 由 ADC_EXTERNALTRIGCONV_T5_CC1 选择)
-//        TIM5 Period=5599 → 84MHz/5600 ≈ 15kHz
+// 触发:  TIM3_CH1 OC1REF 上升沿 (由 ADC_EXTERNALTRIGCONV_T3_CC1 选择)
+//        TIM3 从模式接 TIM1_TRGO, Period=2 → 每个 TIM1 更新事件触发一次 ADC
 // DMA:   CIRCULAR 双缓冲 (ping-pong)
 //
 //
@@ -105,30 +105,30 @@ static void adc_dma_init(void)
 }
 
 /**
-  * @brief  配置 TIM5_CH1 输出 PWM, 产生 OC1REF 上升沿.
-  *         OC1REF 内部连接到 ADC 触发选择器 (ADC_EXTERNALTRIGCONV_T5_CC1).
-  *         PA0 配置为 AF2, 外部引脚不受影响.
-  *         TIM5 必须在外部已由 MX_TIM5_Init() 初始化.
+  * @brief  配置 TIM3_CH1 输出 PWM, 产生 OC1REF 上升沿.
+  *         OC1REF 内部连接到 ADC 触发选择器 (ADC_EXTERNALTRIGCONV_T3_CC1).
+  *         无需外部引脚.
+  *         TIM3 必须在外部已由 MX_TIM3_Init() 初始化.
   */
-static void adc_tim5_trigger_init(void)
+static void adc_tim3_trigger_init(void)
 {
     TIM_OC_InitTypeDef oc = {0};
-    extern TIM_HandleTypeDef htim5;       /* 由 CubeMX tim.c 定义 */
+    extern TIM_HandleTypeDef htim3;       /* 由 CubeMX tim.c 定义 */
 
-    /* 使能 TIM5 PWM 子模式 (基模式已由 MX_TIM5_Init 完成) */
-    if (HAL_TIM_PWM_Init(&htim5) != HAL_OK)
+    /* 使能 TIM3 PWM 子模式 (基模式已由 MX_TIM3_Init 完成) */
+    if (HAL_TIM_PWM_Init(&htim3) != HAL_OK)
         Error_Handler();
 
-    /* CH1: PWM1, Pulse=Period/2, 每个周期产生 OC1REF 翻转 */
+    /* CH1: PWM1, Pulse=1, 每个周期产生 OC1REF 翻转 */
     oc.OCMode     = TIM_OCMODE_PWM1;
     oc.Pulse      = 1;
     oc.OCPolarity = TIM_OCPOLARITY_HIGH;
     oc.OCFastMode = TIM_OCFAST_DISABLE;
-    if (HAL_TIM_PWM_ConfigChannel(&htim5, &oc, TIM_CHANNEL_1) != HAL_OK)
+    if (HAL_TIM_PWM_ConfigChannel(&htim3, &oc, TIM_CHANNEL_1) != HAL_OK)
         Error_Handler();
 
     /* 启动 PWM 输出 (OC1REF 开始跳变) */
-    if (HAL_TIM_PWM_Start(&htim5, TIM_CHANNEL_1) != HAL_OK)
+    if (HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_1) != HAL_OK)
         Error_Handler();
 }
 
@@ -143,7 +143,7 @@ static void adc_init(void)
     s_hadc1.Init.ContinuousConvMode    = DISABLE;
     s_hadc1.Init.DiscontinuousConvMode = DISABLE;
     s_hadc1.Init.ExternalTrigConvEdge  = ADC_EXTERNALTRIGCONVEDGE_RISING;
-    s_hadc1.Init.ExternalTrigConv      = ADC_EXTERNALTRIGCONV_T5_CC1;
+    s_hadc1.Init.ExternalTrigConv      = ADC_EXTERNALTRIGCONV_T3_CC1;
     s_hadc1.Init.DataAlign             = ADC_DATAALIGN_RIGHT;
     s_hadc1.Init.NbrOfConversion       = 4;
     s_hadc1.Init.DMAContinuousRequests = ENABLE;
@@ -219,8 +219,8 @@ void I_Check_Init(void)
 
     adc_gpio_init();
     adc_dma_init();
-    adc_tim5_trigger_init();    /* TIM5_CH1 OC1REF → ADC 触发 */
-    adc_init();                 /* ADC 选择 T5_CC1 触发源 */
+    adc_tim3_trigger_init();    /* TIM3_CH1 OC1REF → ADC 触发 */
+    adc_init();                 /* ADC 选择 T3_CC1 触发源 */
 
     s_inited = 1;
 }

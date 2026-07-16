@@ -139,7 +139,7 @@ static void FOC_3_test_task(void* /*argument*/) {
     m1_pid.current_q = &m1_curq_pid;
     m1_pid.current_d = &m1_curd_pid;
     static MT6701 m1_enc({&hspi1, GPIOD, GPIO_PIN_7});
-    static FOC_3 motor1({&m1_enc,I_check_lowpass_M1, &htim1, &htim5, 11, 12.0f, 7.5f, 1.7f, 0, "motor1"});
+    static FOC_3 motor1({&m1_enc,I_check_lowpass_M1, &htim1, &htim3, 11, 12.0f, 7.5f, 1.7f, 0, "motor1"});
     motor1.init(m1_pid);
     motor1.set_location_zero(5700);
     // motor1.set_location_limit(2000,-4000);
@@ -165,7 +165,7 @@ static void FOC_3_test_task(void* /*argument*/) {
     m2_pid.current_d = &m2_curd_pid;
 
     static MT6701 m2_enc({&hspi2, GPIOB, GPIO_PIN_12});
-    static FOC_3 motor2({&m2_enc,I_check_lowpass_M2, &htim2, &htim5, 11, 12.0f, 7.5f, 1.7f, 1, "motor1"});
+    static FOC_3 motor2({&m2_enc,I_check_lowpass_M2, &htim2, &htim3, 11, 12.0f, 7.5f, 1.7f, 1, "motor1"});
     motor2.init(m2_pid);
     motor2.set_location_limit(4000,-4000);
 
