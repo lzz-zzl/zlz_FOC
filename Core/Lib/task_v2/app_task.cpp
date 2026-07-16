@@ -143,14 +143,14 @@ static void FOC_3_test_task(void* /*argument*/) {
     static FOC_3 motor1({&m1_enc,I_check_lowpass_M1, &htim1, &htim3, 11, 12.0f, 7.5f, 1.7f, 0, "motor1"});
     motor1.init(m1_pid);
     motor1.set_location_zero(5700);
-    // motor1.set_location_limit(2000,-4000);
+    motor1.set_location_limit(2000,-4000);
 
     //电机2
     /* 创建 PID */
     static control_PID m2_speed_pid, m2_loc_pid, m2_curq_pid, m2_curd_pid, m2_direct_pid;
     /* 初始化三环 PID 参数 */
     Control_PID_Init(&m2_speed_pid,   3000.0f, 200.0f, 0.0f, -32767.0f, 32767.0f, 20000.0f,2000.0f);
-    Control_PID_Init(&m2_loc_pid,     0.0005f, 0.0f, 0.01f, -4.0f, 8.0f,1.0f, 15.0f);
+    Control_PID_Init(&m2_loc_pid,     0.005f, 0.0f, 0.01f, -4.0f, 4.0f,1.0f, 15.0f);
     Control_PID_Init(&m2_curq_pid,    1.0f, 0.04f, 0.0f, -32767.0f, 32767.0f, 250,20000);
     // lowpass_Filter curOutFilter = {0.1f,0.0f};
     // PID_EnableOutputFilter(&m2_curq_pid, lowpass_filter,&curOutFilter);

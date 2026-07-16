@@ -530,12 +530,12 @@ void FOC_3::cogging_learn_stop() {
 
 #define COGGING_FLASH_ADDR   0x08060000  /* 使用最后一个 Sector (Sector 7, 128KB) */
 #define COGGING_FLASH_MAGIC  0xCAFE      /* 校验标记 (16-bit) */
+#define COGGING_SLOT_SIZE    0x1000      /* 每个电机槽大小 (4KB, 足够 magic+1440×int16) */
 
 void FOC_3::cogging_save_to_flash() {
     HAL_StatusTypeDef status;
     FLASH_EraseInitTypeDef erase = {0};
     uint32_t sector_error = 0;
-    uint32_t addr = COGGING_FLASH_ADDR;
 
     HAL_FLASH_Unlock();
 
@@ -551,14 +551,19 @@ void FOC_3::cogging_save_to_flash() {
         return;
     }
 
-    /* 写入 Magic Number */
-    HAL_FLASH_Program(FLASH_TYPEPROGRAM_HALFWORD, addr, (uint64_t)COGGING_FLASH_MAGIC);
-    addr += 2;
+    /* 一次擦除，写入所有已注册电机的表 */
+    for (uint8_t id = 0; id < 4; id++) {
+        if (!instances[id]) continue;
+        uint32_t addr = COGGING_FLASH_ADDR + id * COGGING_SLOT_SIZE;
 
-    /* 写入补偿表 (int16_t × 1440) */
-    for (uint16_t i = 0; i < TABLE_SIZE; i++) {
-        HAL_FLASH_Program(FLASH_TYPEPROGRAM_HALFWORD, addr, (uint64_t)(uint16_t)m_cogging_table[i]);
+        HAL_FLASH_Program(FLASH_TYPEPROGRAM_HALFWORD, addr, (uint64_t)COGGING_FLASH_MAGIC);
         addr += 2;
+
+        for (uint16_t i = 0; i < TABLE_SIZE; i++) {
+            HAL_FLASH_Program(FLASH_TYPEPROGRAM_HALFWORD, addr,
+                              (uint64_t)(uint16_t)instances[id]->m_cogging_table[i]);
+            addr += 2;
+        }
     }
 
     HAL_FLASH_Lock();
@@ -566,7 +571,8 @@ void FOC_3::cogging_save_to_flash() {
 }
 
 void FOC_3::cogging_load_from_flash() {
-    volatile uint16_t *base = (volatile uint16_t *)COGGING_FLASH_ADDR;
+    uint32_t addr = COGGING_FLASH_ADDR + m_id * COGGING_SLOT_SIZE;
+    volatile uint16_t *base = (volatile uint16_t *)addr;
 
     /* 校验 Magic */
     if (base[0] != COGGING_FLASH_MAGIC) {
@@ -574,7 +580,7 @@ void FOC_3::cogging_load_from_flash() {
         return;
     }
 
-    volatile int16_t *src = (volatile int16_t *)(COGGING_FLASH_ADDR + 2);
+    volatile int16_t *src = (volatile int16_t *)(addr + 2);
     for (uint16_t i = 0; i < TABLE_SIZE; i++) {
         m_cogging_table[i] = src[i];
     }
