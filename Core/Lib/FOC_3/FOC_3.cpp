@@ -400,13 +400,13 @@ void FOC_3::period() {
             m_cogging_table[learn_angle] += m_i_q_q15;
             m_cogging_count[learn_angle]++;
             if (learn_phase == 0) {
-                if (m_cogging_count[learn_angle] >= 5) {
+                if (m_cogging_count[learn_angle] >= 10) {
                     learn_angle = (learn_angle + 1) % TABLE_SIZE;
                     learn_count++;
                 }
             }
             else if (learn_phase == 1) {
-                if (m_cogging_count[learn_angle] >= 10) {
+                if (m_cogging_count[learn_angle] >= 20) {
                     if (learn_angle == 0) {
                         learn_angle = TABLE_SIZE;
                     }
