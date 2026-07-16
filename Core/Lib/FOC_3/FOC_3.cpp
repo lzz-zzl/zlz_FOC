@@ -389,6 +389,14 @@ void FOC_3::period() {
         static uint16_t learn_count = 0;
         static uint8_t  learn_phase = 0;   /* 0=正向, 1=反向 */
 
+        if (m_cogging_learnState == 1) {
+            learn_angle = m_elect_angle;
+            learn_location = m_encoder->refresh_raw();
+            learn_count = 0;
+            learn_phase = 0;   /* 0=正向, 1=反向 */
+            m_cogging_learnState = 2;
+        }
+
         /* learn_location 是原始编码器值 (0~16383), 转成符号位置给 PID */
         int16_t raw2pos = learn_location - m_rela_location_zero;
         if (raw2pos > 8191)       raw2pos -= 16384;
@@ -400,13 +408,13 @@ void FOC_3::period() {
             m_cogging_table[learn_angle] += m_i_q_q15;
             m_cogging_count[learn_angle]++;
             if (learn_phase == 0) {
-                if (m_cogging_count[learn_angle] >= 10) {
+                if (m_cogging_count[learn_angle] >= 5) {
                     learn_angle = (learn_angle + 1) % TABLE_SIZE;
                     learn_count++;
                 }
             }
             else if (learn_phase == 1) {
-                if (m_cogging_count[learn_angle] >= 20) {
+                if (m_cogging_count[learn_angle] >= 10) {
                     if (learn_angle == 0) {
                         learn_angle = TABLE_SIZE;
                     }
@@ -446,6 +454,7 @@ void FOC_3::period() {
 
                 learn_angle = m_elect_angle;
                 learn_location = m_encoder->refresh_raw();
+                m_cogging_learnState = 0;
                 learn_count = 0;
                 learn_phase = 0;   /* 0=正向, 1=反向 */
             }
@@ -510,7 +519,7 @@ void FOC_3::cogging_learn_start() {
     m_learn_angle    = m_elect_angle;         /* 从当前电角度开始 */
     m_learn_location = m_location;
     m_learn_count    = 0;
-
+    m_cogging_learnState = 1;
     m_state = 121;
 }
 
@@ -713,14 +722,23 @@ void FOC_3::parse_keyValue(char * cmd)
         }
         else if (strcmp(key, "cogging_dump") == 0) {
             char buf[128];
+            uint16_t pos = 0;
             for (uint16_t i = 0; i < TABLE_SIZE; i++) {
-                snprintf(buf, sizeof(buf), "%d%c", m->m_cogging_table[i],
-                         (i == TABLE_SIZE - 1) ? '\n' : ',');
-                Serial_SendString(buf);
+                int len = snprintf(buf + pos, sizeof(buf) - pos, "%d%c",
+                                   m->m_cogging_table[i],
+                                   (i == TABLE_SIZE - 1) ? '\n' : ',');
+                if (len < 0) break;
+                pos += len;
+                /* 缓冲区快满时一次性发送 */
+                if (pos > sizeof(buf) - 12 || i == TABLE_SIZE - 1) {
+                    buf[pos] = '\0';
+                    Serial_SendString(buf);
+                    pos = 0;
+                }
             }
         }
         else if (strcmp(key, "cogging_load") == 0) {
-            char *p = val_str;
+            char *p = strtok(val_str, ",");
             for (uint16_t i = 0; i < TABLE_SIZE && p; i++) {
                 m->m_cogging_table[i] = (int16_t)atoi(p);
                 p = strtok(NULL, ",");

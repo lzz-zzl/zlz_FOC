@@ -192,6 +192,7 @@ private:
     uint16_t m_cogging_count[1440];  // 学习计数
     uint8_t  m_cogging_rounds;     // 已学习圈数
     bool     m_cogging_enable;     // 启用补偿
+    uint8_t m_cogging_learnState = 0;
     void cogging_learn_start();
     void cogging_learn_stop();
 
