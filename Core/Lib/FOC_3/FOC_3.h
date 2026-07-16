@@ -193,6 +193,10 @@ private:
     void cogging_learn_start();
     void cogging_learn_stop();
 
+    /* 齿槽补偿 Flash 存储 (Sector 7, 0x08060000) */
+    void cogging_save_to_flash();
+    void cogging_load_from_flash();
+
     /* 内部方法 */
     static void m_enable();
     static void m_disable();

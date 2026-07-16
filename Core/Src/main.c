@@ -92,6 +92,7 @@ void HAL_ADC_ConvHalfCpltCallback(ADC_HandleTypeDef* hadc)
 {
   if(hadc->Instance == ADC1)
   {
+    tim_dif_start(0);
     I_Check_HalfCplt_Handler();
     FOC_3_period();
 
@@ -110,6 +111,7 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc)
 {
   if(hadc->Instance == ADC1)
   {
+    tim_dif_stop(0);
     I_Check_Cplt_Handler();
     FOC_3_period();
   }

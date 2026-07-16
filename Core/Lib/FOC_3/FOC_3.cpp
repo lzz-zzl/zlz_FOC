@@ -304,7 +304,7 @@ void FOC_3::direct_location_pid() {
 /* ========================================================================== */
 
 void FOC_3::period() {
-    tim_dif_start(1);
+
     int16_t m_location_temp = m_encoder->refresh_raw()- m_rela_location_zero;
     if (m_location_temp > 8191) {
         m_location = m_location_temp - 16384;
@@ -409,7 +409,6 @@ void FOC_3::period() {
     else if (m_state == 113) {
         m_uq = 0; m_ud = 0;
     }
-    tim_dif_stop(1);
 }
 
 /* ========================================================================== */
@@ -462,6 +461,64 @@ void FOC_3::cogging_learn_stop() {
     }
     m_state = 0;
     m_cogging_rounds = 0;
+}
+
+/* ========================================================================== */
+/*                  齿槽补偿 Flash 存储                                        */
+/* ========================================================================== */
+
+#define COGGING_FLASH_ADDR   0x08060000  /* 使用最后一个 Sector (Sector 7, 128KB) */
+#define COGGING_FLASH_MAGIC  0xCAFE      /* 校验标记 (16-bit) */
+
+void FOC_3::cogging_save_to_flash() {
+    HAL_StatusTypeDef status;
+    FLASH_EraseInitTypeDef erase = {0};
+    uint32_t sector_error = 0;
+    uint32_t addr = COGGING_FLASH_ADDR;
+
+    HAL_FLASH_Unlock();
+
+    /* 擦除 Sector 7 */
+    erase.TypeErase     = FLASH_TYPEERASE_SECTORS;
+    erase.Sector        = FLASH_SECTOR_7;
+    erase.NbSectors     = 1;
+    erase.VoltageRange  = FLASH_VOLTAGE_RANGE_3;
+    status = HAL_FLASHEx_Erase(&erase, &sector_error);
+    if (status != HAL_OK) {
+        HAL_FLASH_Lock();
+        Serial_SendString("cogging erase fail\r\n");
+        return;
+    }
+
+    /* 写入 Magic Number */
+    HAL_FLASH_Program(FLASH_TYPEPROGRAM_HALFWORD, addr, (uint64_t)COGGING_FLASH_MAGIC);
+    addr += 2;
+
+    /* 写入补偿表 (int16_t × 1440) */
+    for (uint16_t i = 0; i < TABLE_SIZE; i++) {
+        HAL_FLASH_Program(FLASH_TYPEPROGRAM_HALFWORD, addr, (uint64_t)(uint16_t)m_cogging_table[i]);
+        addr += 2;
+    }
+
+    HAL_FLASH_Lock();
+    Serial_SendString("cogging saved\r\n");
+}
+
+void FOC_3::cogging_load_from_flash() {
+    volatile uint16_t *base = (volatile uint16_t *)COGGING_FLASH_ADDR;
+
+    /* 校验 Magic */
+    if (base[0] != COGGING_FLASH_MAGIC) {
+        Serial_SendString("cogging flash invalid\r\n");
+        return;
+    }
+
+    volatile int16_t *src = (volatile int16_t *)(COGGING_FLASH_ADDR + 2);
+    for (uint16_t i = 0; i < TABLE_SIZE; i++) {
+        m_cogging_table[i] = src[i];
+    }
+
+    Serial_SendString("cogging loaded\r\n");
 }
 
 /* ========================================================================== */
@@ -602,6 +659,12 @@ void FOC_3::parse_keyValue(char * cmd)
                 p = strtok(NULL, ",");
             }
         }
+        else if (strcmp(key, "cogging_save") == 0) {
+            m->cogging_save_to_flash();
+        }
+        else if (strcmp(key, "cogging_fload") == 0) {
+            m->cogging_load_from_flash();
+        }
     }
 }
 /* ===================================调试信息==================================== */
@@ -632,11 +695,13 @@ void FOC_3::showPID_location(float *data) {
 }
 
 void FOC_3::Motors_period() {
+    tim_dif_start(1);
     for (uint8_t i = 0; i < 4; i++) {
         if (instances[i]) {
             instances[i]->period();
         }
     }
+    tim_dif_stop(1);
 }
 
 extern "C" void FOC_3_period() {

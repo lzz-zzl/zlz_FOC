@@ -97,7 +97,7 @@ static void OLEDTaskFunc(void* /*argument*/) {
             OLED_ShowSignedNum(2, 11, m->get_location(), 5);
 
             /* 行3: IqR:800 Iq:780 */
-            OLED_ShowSignedNum(3, 1, m->get_iq_q15() / 16, 4);
+            OLED_ShowNum(3, 1, get_tim_dif(0), 4);
             OLED_ShowNum(3, 9, m->get_encode_val(), 5);
 
             /* 行4: Ia:+123 Ib:-045 */
@@ -124,8 +124,8 @@ static void FOC_3_test_task(void* /*argument*/) {
     //电机1
     static control_PID m1_speed_pid, m1_loc_pid, m1_curq_pid, m1_curd_pid, m1_direct_pid;
     /* 初始化三环 PID 参数 */
-    Control_PID_Init(&m1_speed_pid,   300.0f, 50.0f, 0.0f, -32767.0f, 32767.0f, 2000.0f,2000.0f);
-    Control_PID_Init(&m1_loc_pid,     0.01f, 0.0f, 0.12f, -4.0f, 4.0f,1.0f, 15.0f);
+    Control_PID_Init(&m1_speed_pid,   3000.0f, 200.0f, 0.0f, -32767.0f, 32767.0f, 20000.0f,20000.0f);
+    Control_PID_Init(&m1_loc_pid,     0.008f, 0.0f, 0.01f, -4.0f, 4.0f,1.0f, 15.0f);
     Control_PID_Init(&m1_curq_pid,    1.0f, 0.04f, 0.0f, -32767.0f, 32767.0f, 250,20000);
     // lowpass_Filter curOutFilter = {0.1f,0.0f};
     // PID_EnableOutputFilter(&m1_curq_pid, lowpass_filter,&curOutFilter);
@@ -149,8 +149,8 @@ static void FOC_3_test_task(void* /*argument*/) {
     /* 创建 PID */
     static control_PID m2_speed_pid, m2_loc_pid, m2_curq_pid, m2_curd_pid, m2_direct_pid;
     /* 初始化三环 PID 参数 */
-    Control_PID_Init(&m2_speed_pid,   300.0f, 50.0f, 0.0f, -32767.0f, 32767.0f, 2000.0f,2000.0f);
-    Control_PID_Init(&m2_loc_pid,     0.0005f, 0.0f, 0.05f, -4.0f, 4.0f,1.0f, 15.0f);
+    Control_PID_Init(&m2_speed_pid,   3000.0f, 200.0f, 0.0f, -32767.0f, 32767.0f, 20000.0f,2000.0f);
+    Control_PID_Init(&m2_loc_pid,     0.0005f, 0.0f, 0.01f, -4.0f, 8.0f,1.0f, 15.0f);
     Control_PID_Init(&m2_curq_pid,    1.0f, 0.04f, 0.0f, -32767.0f, 32767.0f, 250,20000);
     // lowpass_Filter curOutFilter = {0.1f,0.0f};
     // PID_EnableOutputFilter(&m2_curq_pid, lowpass_filter,&curOutFilter);
@@ -284,9 +284,9 @@ static void CreateTasks() {
         // { "SerialTask",  &SerialTaskFunc,  config::SERIAL_STACK_SIZE, config::SERIAL_PRIORITY },
         { "OLED_Task",   &OLEDTaskFunc,    config::OLED_STACK_SIZE,   40 },
         // { "FOC_Task",    &FOCTaskFunc,     config::FOC_STACK_SIZE,    config::FOC_PRIORITY },
-        { "task_printf", &task_printf,  256 * 4 , 40 },
+        { "task_printf", &task_printf,  256 * 4 , 42 },
         // { "JY61P_Test",  &JY61PTestTask,   256 * 4,                  30 },
-        { "FOC_3_test_task",    &FOC_3_test_task,     512*4,    45 },
+        { "FOC_3_test_task",    &FOC_3_test_task,     512*4,    40 },
     };
 
     for (const auto& t : tasks) {
