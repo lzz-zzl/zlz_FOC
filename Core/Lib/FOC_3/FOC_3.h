@@ -181,13 +181,13 @@ private:
     control_object m_current_d_obj;
 
     /* sin/cos 查表 */
-    inline static int16_t m_sin_table[360] ={};
-    inline static int16_t m_cos_table[360] ={};
+    inline static int16_t m_sin_table[1440] ={};
+    inline static int16_t m_cos_table[1440] ={};
     inline static bool if_tableInit = false;
 
     /* ---------- 齿槽补偿 ---------- */
-    int16_t  m_cogging_table[360];  // Q15 补偿值
-    uint16_t m_cogging_count[360];  // 学习计数
+    int16_t  m_cogging_table[1440];  // Q15 补偿值
+    uint16_t m_cogging_count[1440];  // 学习计数
     uint8_t  m_cogging_rounds;     // 已学习圈数
     bool     m_cogging_enable;     // 启用补偿
     void cogging_learn_start();
@@ -231,7 +231,7 @@ private:
     static constexpr int32_t  Q16             = 65536;
     static constexpr int32_t  Q16_D_115       = 56987;   // Q16/1.15
     static constexpr int16_t  Q15_SCALE       = 32767;
-    static constexpr uint16_t TABLE_SIZE      = 360;
+    static constexpr uint16_t TABLE_SIZE      = 1440;
     static constexpr uint16_t PWM_PERIOD      = 699;
     static constexpr uint16_t ENCODER_BIT     = 16383;
     static constexpr int16_t  ERR_LOCATION    = 10;

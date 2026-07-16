@@ -79,7 +79,7 @@ void FOC_3::m_disable() {
 void FOC_3::table_init() {
     if (if_tableInit == false) {
         for (uint16_t i = 0; i < TABLE_SIZE; i++) {
-            float rad = (float)i * 3.1415926f / 180.0f;
+            float rad = (float)i * 360.0f / (float)TABLE_SIZE * 3.1415926f / 180.0f;
             m_cos_table[i] = (int16_t)(cosf(rad) * Q15_SCALE);
             m_sin_table[i] = (int16_t)(sinf(rad) * Q15_SCALE);
         }
@@ -149,13 +149,13 @@ void FOC_3::elect_angle_from_encoder() {
     else
         temp = raw + MT6701::RESOLUTION - m_elect_angle_zero;
 
-    m_elect_angle = (int16_t)(((int32_t)temp * m_pole_pairs * 360 / (MT6701::RESOLUTION - 1)) % 360);
+    m_elect_angle = (int16_t)(((int32_t)temp * m_pole_pairs * TABLE_SIZE / (MT6701::RESOLUTION - 1)) % TABLE_SIZE);
 }
 
 void FOC_3::elect_angle_analog(float rad_s) {
-    m_elect_angle_analog += rad_s * (float)m_pole_pairs * 360.0f / 15000.0f;
-    if (m_elect_angle_analog >= 360.0f) m_elect_angle_analog -= 360.0f;
-    if (m_elect_angle_analog < 0.0f)    m_elect_angle_analog += 360.0f;
+    m_elect_angle_analog += rad_s * (float)m_pole_pairs * (float)TABLE_SIZE / 15000.0f;
+    if (m_elect_angle_analog >= (float)TABLE_SIZE) m_elect_angle_analog -= (float)TABLE_SIZE;
+    if (m_elect_angle_analog < 0.0f)               m_elect_angle_analog += (float)TABLE_SIZE;
     m_elect_angle_A = (int16_t)m_elect_angle_analog;
 }
 
@@ -378,7 +378,7 @@ void FOC_3::period() {
                     m_cogging_count[a]++;
                 }
             } else if (cur < last_angle) {
-                for (int16_t a = last_angle + 1; a < 360; a++) {
+                for (int16_t a = last_angle + 1; a < TABLE_SIZE; a++) {
                     m_cogging_table[a] += m_i_q_q15;
                     m_cogging_count[a]++;
                 }
@@ -442,7 +442,7 @@ void FOC_3::error_handle() {
 
 void FOC_3::cogging_learn_start() {
     /* 清空补偿表和计数 */
-    for (uint16_t i = 0; i < 360; i++) {
+    for (uint16_t i = 0; i < TABLE_SIZE; i++) {
         m_cogging_table[i] = 0;
         m_cogging_count[i] = 0;
     }
@@ -454,7 +454,7 @@ void FOC_3::cogging_learn_start() {
 
 void FOC_3::cogging_learn_stop() {
     /* 均化补偿表 */
-    for (uint16_t i = 0; i < 360; i++) {
+    for (uint16_t i = 0; i < TABLE_SIZE; i++) {
         if (m_cogging_count[i] > 0)
             m_cogging_table[i] /= (int16_t)m_cogging_count[i];
     }
@@ -587,15 +587,15 @@ void FOC_3::parse_keyValue(char * cmd)
         }
         else if (strcmp(key, "cogging_dump") == 0) {
             char buf[128];
-            for (uint16_t i = 0; i < 360; i++) {
+            for (uint16_t i = 0; i < TABLE_SIZE; i++) {
                 snprintf(buf, sizeof(buf), "%d%c", m->m_cogging_table[i],
-                         (i == 359) ? '\n' : ',');
+                         (i == TABLE_SIZE - 1) ? '\n' : ',');
                 Serial_SendString(buf);
             }
         }
         else if (strcmp(key, "cogging_load") == 0) {
             char *p = val_str;
-            for (uint16_t i = 0; i < 360 && p; i++) {
+            for (uint16_t i = 0; i < TABLE_SIZE && p; i++) {
                 m->m_cogging_table[i] = (int16_t)atoi(p);
                 p = strtok(NULL, ",");
             }
