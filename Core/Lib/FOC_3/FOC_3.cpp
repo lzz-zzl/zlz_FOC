@@ -152,6 +152,18 @@ void FOC_3::elect_angle_from_encoder() {
     m_elect_angle = (int16_t)(((int32_t)temp * m_pole_pairs * TABLE_SIZE / (MT6701::RESOLUTION - 1)) % TABLE_SIZE);
 }
 
+int16_t FOC_3::elect_angle_from_location(int16_t  location) {
+    int16_t raw = location;
+    uint16_t temp = 0;
+    if (raw >= m_elect_angle_zero)
+        temp = raw - m_elect_angle_zero;
+    else
+        temp = raw + MT6701::RESOLUTION - m_elect_angle_zero;
+    int16_t temp_angle = (int16_t)(((int32_t)temp * m_pole_pairs * TABLE_SIZE / (MT6701::RESOLUTION - 1)) % TABLE_SIZE);
+    return  temp_angle;
+}
+
+
 void FOC_3::elect_angle_analog(float rad_s) {
     m_elect_angle_analog += rad_s * (float)m_pole_pairs * (float)TABLE_SIZE / 15000.0f;
     if (m_elect_angle_analog >= (float)TABLE_SIZE) m_elect_angle_analog -= (float)TABLE_SIZE;
@@ -287,6 +299,13 @@ void FOC_3::location_target_pid() {
     m_location_obj.Actual = (float)m_location;
 
     m_speed_target = PID_Calculate(m_location_pid, &m_location_obj);
+
+    if (m_location == m_location_target) {
+        m_location_target_state = 1;
+    }
+    else {
+        m_location_target_state = 0;
+    }
 }
 
 void FOC_3::direct_location_pid() {
@@ -321,14 +340,14 @@ void FOC_3::period() {
     m_per_count++;
 
     if (m_per_count % 15 == 0) {
-         if (m_state == 4) {
+         if (m_state == 4 || m_state == 121) {
              location_target_pid();
              move(m_elect_angle);
          }
     }
     if (m_per_count % 15 == 0) {
         m_speed = m_encoder->calc_speed_rpm() / 60.0f;
-        if (m_state == 3 || m_state == 4) {
+        if (m_state == 3 || m_state == 4 | m_state == 121) {
             speed_pid_loop();
             move(m_elect_angle);
         }
@@ -353,7 +372,7 @@ void FOC_3::period() {
         // elect_angle_analog(m_speed_analog);
         move(m_elect_angle);
     }
-    else if (m_state == 6 || m_state == 3|| m_state == 4) {
+    else if (m_state == 6 || m_state == 3|| m_state == 4 || m_state == 121) {
         if (driver_en) {
             current_pi_loop();
         }
@@ -364,37 +383,27 @@ void FOC_3::period() {
 
     /* ===== 齿槽补偿学习 (开环拖拽, 模拟角度) ===== */
     else if (m_state == 121) {
-        static int16_t last_angle = -1;
-        elect_angle_analog(0.2);
+        static int16_t learn_angle = m_elect_angle;
+        static int16_t learn_location = m_location;
+        static uint8_t learn_static = 0;
         current_handle();
-        m_ud = 10000; m_uq = 0;
-        move(m_elect_angle_A);
 
-        /* 遍历中间所有角度，防止跳步漏采 */
-        int16_t cur = m_elect_angle_A;
-        if (last_angle >= 0) {
-            if (cur > last_angle) {
-                for (int16_t a = last_angle + 1; a <= cur; a++) {
-                    m_cogging_table[a] += m_i_q_q15;
-                    m_cogging_count[a]++;
-                }
-            } else if (cur < last_angle) {
-                for (int16_t a = last_angle + 1; a < TABLE_SIZE; a++) {
-                    m_cogging_table[a] += m_i_q_q15;
-                    m_cogging_count[a]++;
-                }
-                for (int16_t a = 0; a <= cur; a++) {
-                    m_cogging_table[a] += m_i_q_q15;
-                    m_cogging_count[a]++;
-                }
-                m_cogging_rounds++;
+        if (learn_location == m_location) {
+            m_cogging_table[learn_angle] += m_i_q_ref;
+            m_cogging_count[learn_angle] ++;
+            if (m_cogging_count[learn_angle] == 5) {
+                learn_angle+= 1;
             }
         }
-        last_angle = cur;
-
-        if (m_cogging_rounds >= 10) {
-            cogging_learn_stop();
+        while (elect_angle_from_location(learn_location) != learn_angle) {
+            if (elect_angle_from_location(learn_location) > learn_angle) {
+                learn_location += 1;
+            }
+            if (elect_angle_from_location(learn_location) < learn_angle) {
+                learn_location -= 1;
+            }
         }
+
     }
 
 

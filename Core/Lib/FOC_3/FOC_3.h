@@ -103,6 +103,7 @@ public:
     /* ---------- 调试 ---------- */
     void elect_angle_analog(float rad_s);
     void elect_angle_from_encoder();
+    int16_t elect_angle_from_location(int16_t location);
     static void showPID_cur_q(float *data);
     static void showPID_cur_d(float *data);
     static void showPID_speed(float *data);
