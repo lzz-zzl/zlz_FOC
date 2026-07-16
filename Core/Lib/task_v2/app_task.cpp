@@ -125,7 +125,7 @@ static void FOC_3_test_task(void* /*argument*/) {
     static control_PID m1_speed_pid, m1_loc_pid, m1_curq_pid, m1_curd_pid, m1_direct_pid;
     /* 初始化三环 PID 参数 */
     Control_PID_Init(&m1_speed_pid,   3000.0f, 200.0f, 0.0f, -32767.0f, 32767.0f, 20000.0f,20000.0f);
-    Control_PID_Init(&m1_loc_pid,     0.008f, 0.0f, 0.01f, -4.0f, 4.0f,1.0f, 15.0f);
+    Control_PID_Init(&m1_loc_pid,     0.005f, 0.0f, 0.01f, -4.0f, 4.0f,1.0f, 15.0f);
     Control_PID_Init(&m1_curq_pid,    1.0f, 0.04f, 0.0f, -32767.0f, 32767.0f, 250,20000);
     // lowpass_Filter curOutFilter = {0.1f,0.0f};
     // PID_EnableOutputFilter(&m1_curq_pid, lowpass_filter,&curOutFilter);

@@ -140,6 +140,7 @@ private:
     float    m_elect_angle_analog;
     int16_t  m_start_angle;
 
+    int16_t  m_location_origin;
     int16_t  m_location;
     int16_t  m_location_target;
     int16_t  m_rela_location_zero;
@@ -193,6 +194,11 @@ private:
     bool     m_cogging_enable;     // 启用补偿
     void cogging_learn_start();
     void cogging_learn_stop();
+
+    /* 齿槽学习过程变量 (由 cogging_learn_start 初始化) */
+    int16_t  m_learn_angle     = -1;    // 当前正在学习的电角度索引
+    int16_t  m_learn_location  = 0;     // 对应的机械位置
+    uint16_t m_learn_count     = 0;     // 已完成的电角度数
 
     /* 齿槽补偿 Flash 存储 (Sector 7, 0x08060000) */
     void cogging_save_to_flash();

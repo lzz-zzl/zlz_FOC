@@ -153,6 +153,7 @@ void FOC_3::elect_angle_from_encoder() {
 }
 
 int16_t FOC_3::elect_angle_from_location(int16_t  location) {
+
     int16_t raw = location;
     uint16_t temp = 0;
     if (raw >= m_elect_angle_zero)
@@ -323,8 +324,8 @@ void FOC_3::direct_location_pid() {
 /* ========================================================================== */
 
 void FOC_3::period() {
-
-    int16_t m_location_temp = m_encoder->refresh_raw()- m_rela_location_zero;
+    m_location_origin = m_encoder->refresh_raw();
+    int16_t m_location_temp = m_location_origin- m_rela_location_zero;
     if (m_location_temp > 8191) {
         m_location = m_location_temp - 16384;
     } else if (m_location_temp < -8191) {
@@ -382,28 +383,48 @@ void FOC_3::period() {
 
 
     /* ===== 齿槽补偿学习 (开环拖拽, 模拟角度) ===== */
-    else if (m_state == 121) {
+    if (m_state == 121) {
         static int16_t learn_angle = m_elect_angle;
-        static int16_t learn_location = m_location;
-        static uint8_t learn_static = 0;
-        current_handle();
+        static int16_t learn_location =m_location_origin;
+        static uint16_t learn_count = 0;
+        // current_handle();
 
-        if (learn_location == m_location) {
-            m_cogging_table[learn_angle] += m_i_q_ref;
+        int16_t target_temp = learn_location- m_rela_location_zero;
+        if (m_location_temp > 8191) {
+            target_temp = target_temp - 16384;
+        } else if (m_location_temp < -8191) {
+            target_temp = target_temp + 16384;
+        }
+
+        m_location_target = target_temp;
+        if (m_location == target_temp) {
+            m_cogging_table[learn_angle] += m_i_q_q15;
             m_cogging_count[learn_angle] ++;
-            if (m_cogging_count[learn_angle] == 5) {
-                learn_angle+= 1;
-            }
-        }
-        while (elect_angle_from_location(learn_location) != learn_angle) {
-            if (elect_angle_from_location(learn_location) > learn_angle) {
-                learn_location += 1;
-            }
-            if (elect_angle_from_location(learn_location) < learn_angle) {
-                learn_location -= 1;
+            if (m_cogging_count[learn_angle] >= 20) {
+                learn_angle = (learn_angle + 1) % TABLE_SIZE;
+                learn_count++;
             }
         }
 
+        int16_t test_temp = elect_angle_from_location(learn_location) ;
+        while (elect_angle_from_location(learn_location) != learn_angle) {
+            if (elect_angle_from_location(learn_location) < learn_angle) {
+                learn_location += 1;
+                if (learn_location > 8191) {
+                    learn_location = -8192;
+                }
+            }
+            if (elect_angle_from_location(learn_location) > learn_angle) {
+                learn_location -= 1;
+                if (learn_location < -8192) {
+                    learn_location = 8191;
+                }
+            }
+        }
+        if (learn_count >= 1440) {
+            cogging_learn_stop();
+            learn_count = 0;
+        }
     }
 
 
@@ -459,6 +480,12 @@ void FOC_3::cogging_learn_start() {
     m_cogging_rounds = 0;
     m_cogging_enable = false;
     m_elect_angle_analog = 0.0f;
+
+    /* 初始化学习过程变量 */
+    m_learn_angle    = m_elect_angle;         /* 从当前电角度开始 */
+    m_learn_location = m_location;
+    m_learn_count    = 0;
+
     m_state = 121;
 }
 
