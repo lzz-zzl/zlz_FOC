@@ -382,48 +382,37 @@ void FOC_3::period() {
     }
 
 
-    /* ===== 齿槽补偿学习 (开环拖拽, 模拟角度) ===== */
+    /* ===== 齿槽补偿学习 (位置闭环遍历 1440 个电角度) ===== */
     if (m_state == 121) {
         static int16_t learn_angle = m_elect_angle;
-        static int16_t learn_location =m_location_origin;
+        static int16_t learn_location = m_encoder->refresh_raw();
         static uint16_t learn_count = 0;
-        // current_handle();
 
-        int16_t target_temp = learn_location- m_rela_location_zero;
-        if (m_location_temp > 8191) {
-            target_temp = target_temp - 16384;
-        } else if (m_location_temp < -8191) {
-            target_temp = target_temp + 16384;
-        }
+        /* learn_location 是原始编码器值 (0~16383), 转成符号位置给 PID */
+        int16_t raw2pos = learn_location - m_rela_location_zero;
+        if (raw2pos > 8191)       raw2pos -= 16384;
+        else if (raw2pos < -8192) raw2pos += 16384;
+        m_location_target = raw2pos;
 
-        m_location_target = target_temp;
-        if (m_location == target_temp) {
+        /* 位置到达 → 采样 */
+        if (m_location == raw2pos) {
             m_cogging_table[learn_angle] += m_i_q_q15;
-            m_cogging_count[learn_angle] ++;
-            if (m_cogging_count[learn_angle] >= 20) {
+            m_cogging_count[learn_angle]++;
+            if (m_cogging_count[learn_angle] >= 10) {
                 learn_angle = (learn_angle + 1) % TABLE_SIZE;
                 learn_count++;
             }
         }
 
-        int16_t test_temp = elect_angle_from_location(learn_location) ;
+        /* 单向向前搜索，不跳步 */
         while (elect_angle_from_location(learn_location) != learn_angle) {
-            if (elect_angle_from_location(learn_location) < learn_angle) {
-                learn_location += 1;
-                if (learn_location > 8191) {
-                    learn_location = -8192;
-                }
-            }
-            if (elect_angle_from_location(learn_location) > learn_angle) {
-                learn_location -= 1;
-                if (learn_location < -8192) {
-                    learn_location = 8191;
-                }
-            }
+            learn_location++;
+            if (learn_location >= MT6701::RESOLUTION) learn_location = 0;
         }
-        if (learn_count >= 1440) {
-            cogging_learn_stop();
+
+        if (learn_count >= TABLE_SIZE) {
             learn_count = 0;
+            cogging_learn_stop();
         }
     }
 
