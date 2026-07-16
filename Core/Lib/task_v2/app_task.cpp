@@ -5,6 +5,7 @@
 
 #include "app_task.h"      // 已有 extern "C" 守卫
 #include "cmsis_os.h"      // CMSIS 头文件自带 extern "C"
+#include "FOC_3.h"
 
 // C 库头文件 — 没有 extern "C" 守卫，需要手动包裹
 extern "C" {
@@ -24,7 +25,6 @@ extern "C" {
 extern uint16_t tim5_count;
 extern uint16_t adc_dma_count;
 
-#include "FOC_3.h"
 
 uint8_t *test_data = NULL;
 void set_testdata(uint8_t * p) {
@@ -142,7 +142,7 @@ static void FOC_3_test_task(void* /*argument*/) {
     static FOC_3 motor1({&m1_enc,I_check_lowpass_M1, &htim1, &htim5, 11, 12.0f, 7.5f, 1.7f, 0, "motor1"});
     motor1.init(m1_pid);
     motor1.set_location_zero(5700);
-    motor1.set_location_limit(2000,-4000);
+    // motor1.set_location_limit(2000,-4000);
 
     //电机2
     /* 创建 PID */
@@ -247,7 +247,16 @@ static void task_printf(void * /*argument*/) {
         // temp[3] = ib;
         // temp[2] = test_u_a;
         // temp[3] = test_u_b;
+        if (FOC_3::pid_debug == 0) {
+        FOC_3::showPID_cur_q(temp);
+        }else if (FOC_3::pid_debug == 1) {
+        FOC_3::showPID_cur_d(temp);
+        }
+        else if (FOC_3::pid_debug == 2) {
+        FOC_3::showPID_speed(temp);
+        }else if (FOC_3::pid_debug == 3) {
         FOC_3::showPID_location(temp);
+        }
         temp[4] = test_curdata[1];
         // temp[4] = FOC_3::instances[0]->get_iq_target();
         // temp[5] = test_curdata[2];

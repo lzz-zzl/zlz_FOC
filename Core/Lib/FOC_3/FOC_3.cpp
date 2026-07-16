@@ -319,7 +319,7 @@ void FOC_3::period() {
     int16_t m_i_a, m_i_b;
     m_per_count++;
 
-    if (m_per_count % 30 == 0) {
+    if (m_per_count % 15 == 0) {
          if (m_state == 4) {
              location_target_pid();
              move(m_elect_angle);
@@ -366,7 +366,7 @@ void FOC_3::period() {
         static int16_t last_angle = -1;
         elect_angle_analog(0.2);
         current_handle();
-        m_ud = 5000; m_uq = 0;
+        m_ud = 10000; m_uq = 0;
         move(m_elect_angle_A);
 
         /* 遍历中间所有角度，防止跳步漏采 */
@@ -391,7 +391,7 @@ void FOC_3::period() {
         }
         last_angle = cur;
 
-        if (m_cogging_rounds >= 5) {
+        if (m_cogging_rounds >= 10) {
             cogging_learn_stop();
         }
     }
@@ -604,11 +604,17 @@ void FOC_3::parse_keyValue(char * cmd)
 }
 /* ===================================调试信息==================================== */
 
-void FOC_3::showPID_cur(float *data) {
+void FOC_3::showPID_cur_q(float *data) {
     FOC_3 *m = instances[motorID_debug];
     data[0] = m->m_current_q_obj.Target;
     data[1] = m->m_current_q_obj.Actual;
     data[2] = m->m_current_q_obj.Out;
+}
+void FOC_3::showPID_cur_d(float *data) {
+    FOC_3 *m = instances[motorID_debug];
+    data[0] = m->m_current_d_obj.Target;
+    data[1] = m->m_current_d_obj.Actual;
+    data[2] = m->m_current_d_obj.Out;
 }
 void FOC_3::showPID_speed(float *data) {
     FOC_3 *m = instances[motorID_debug];

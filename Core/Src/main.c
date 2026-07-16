@@ -30,7 +30,6 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "OLED.h"
-#include "MT6816.h"
 #include "Serial.h"
 #include "app_task.h"
 #include "check_I.h"

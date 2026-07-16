@@ -155,7 +155,7 @@ static void adc_init(void)
     /* Rank 1: IN6 — 电机1 相A */
     ch.Channel      = ADC_CHANNEL_6;
     ch.Rank         = 1;
-    ch.SamplingTime = ADC_SAMPLETIME_144CYCLES;
+    ch.SamplingTime = ADC_SAMPLETIME_56CYCLES;
     if (HAL_ADC_ConfigChannel(&s_hadc1, &ch) != HAL_OK)
         Error_Handler();
 

@@ -7,7 +7,6 @@
 #include "Serial.h"
 
 #include "app_task.h"
-#include "FOC_1.h"
 #include "OLED.h"
 #include "Control.h"
 #include "JY61P.h"
