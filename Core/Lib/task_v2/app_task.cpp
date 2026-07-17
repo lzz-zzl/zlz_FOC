@@ -101,9 +101,9 @@ static void OLEDTaskFunc(void* /*argument*/) {
             OLED_ShowNum(3, 9, m->get_encode_val(), 5);
 
             /* 行4: Ia:+123 Ib:-045 */
-            OLED_ShowNum(4, 1,get_tim_dif(1), 5);
+            OLED_ShowNum(4, 13,get_tim_dif(1), 3);
             OLED_ShowNum(4, 8,adc_dma_count, 3);
-            OLED_ShowNum(4, 13,FOC_3::pid_debug, 3);
+            // OLED_ShowNum(4, 13,FOC_3::pid_debug, 3);
         } else {
             OLED_ShowString(1, 8, "no motor");
             static uint8_t count = 0;
@@ -201,21 +201,31 @@ static void MT6701TaskFunc(void* /*argument*/) {
     }
 }
 
+float gx, gy, gz, roll, pitch, yaw;
+float out[6] ;
 static void JY61PTestTask(void* /*argument*/) {
-    osDelay(200);
-    /* 手动初始化 PB12 为推挽输出 */
-    GPIO_InitTypeDef g = {0};
-    g.Pin = GPIO_PIN_12;
-    g.Mode = GPIO_MODE_OUTPUT_PP;
-    g.Pull = GPIO_NOPULL;
-    g.Speed = GPIO_SPEED_FREQ_LOW;
-    HAL_GPIO_Init(GPIOB, &g);
+    /* USART6 接收已在 Serial_Init() 中启动 */
+    osDelay(500);  // 等模块上电稳定
+
+    uint32_t last_log = 0;
 
     for (;;) {
-        HAL_GPIO_WritePin(GPIOB, GPIO_PIN_12, GPIO_PIN_SET);
-        osDelay(100);
-        HAL_GPIO_WritePin(GPIOB, GPIO_PIN_12, GPIO_PIN_RESET);
-        osDelay(500);
+        /* 读陀螺仪数据 (°/s) */
+        JY61P_GetGyro(&gx, &gy, &gz);
+        JY61P_GetAngle(&roll, &pitch, &yaw);
+        out[0] = gx;
+        out[1] = gy;
+        out[2] = gz;
+        out[3] = roll;
+        out[4] = pitch;
+        out[5] = yaw;
+
+
+        /* VOFA+ justfloat 协议: gx gy gz roll pitch yaw */
+        // Serial_JustFloat(out, 6);
+
+        OLED_ShowNum(4,1,(int16_t)(out[1]*1000),5);
+        osDelay(10);
     }
 }
 
@@ -263,7 +273,8 @@ static void task_printf(void * /*argument*/) {
         // temp[5] = test_curdata[2];
 
 
-        Serial_JustFloat(temp,5);
+        // Serial_JustFloat(temp,5);
+        Serial_JustFloat(out,6);
         osDelay(1);
     }
 }
@@ -282,10 +293,10 @@ static void CreateTasks() {
 
     constexpr TaskDef tasks[] = {
         // { "SerialTask",  &SerialTaskFunc,  config::SERIAL_STACK_SIZE, config::SERIAL_PRIORITY },
-        { "OLED_Task",   &OLEDTaskFunc,    config::OLED_STACK_SIZE,   40 },
+        { "OLED_Task",   &OLEDTaskFunc,    config::OLED_STACK_SIZE,   30 },
         // { "FOC_Task",    &FOCTaskFunc,     config::FOC_STACK_SIZE,    config::FOC_PRIORITY },
         { "task_printf", &task_printf,  256 * 4 , 42 },
-        { "JY61P_Test",  &JY61PTestTask,   256 * 4,                  30 },
+        { "JY61P_Test",  &JY61PTestTask,   256 * 4,                  40 },
         { "FOC_3_test_task",    &FOC_3_test_task,     512*4,    45 },
     };
 

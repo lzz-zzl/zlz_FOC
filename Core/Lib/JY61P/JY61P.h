@@ -30,10 +30,14 @@ typedef struct {
     float pitch;
     float yaw;
 
-    //角加速度
-    int16_t gx;
-    int16_t gy;
-    int16_t gz;
+    //角速度 (°/s)
+    float gx;
+    float gy;
+    float gz;
+
+    int16_t gx_raw;
+    int16_t gy_raw;
+    int16_t gz_raw;
 
     int16_t temp_raw;
     uint8_t frame_count;

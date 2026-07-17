@@ -77,12 +77,15 @@ void JY61P_ParseAccel_16bit(uint8_t *buf){
 //     jy61p_data.gz_raw = gz_raw;
 // }
 void JY61P_ParseGyro_16bit(uint8_t *buf) {
-    // if (buf[0] != 0x55 || buf[1] != 0x52) return;
-
     // 提取原始数据 (小端模式)
     int16_t gx_raw = (int16_t)(buf[2] | (buf[3] << 8));
     int16_t gy_raw = (int16_t)(buf[4] | (buf[5] << 8));
     int16_t gz_raw = (int16_t)(buf[6] | (buf[7] << 8));
+
+    // 存储原始值
+    jy61p_data.gx_raw = gx_raw;
+    jy61p_data.gy_raw = gy_raw;
+    jy61p_data.gz_raw = gz_raw;
 
     // 角速度: 32768 = 2000°/s (默认±2000°/s量程)
     jy61p_data.gx = gx_raw / 32768.0f * 2000.0f;
@@ -106,6 +109,11 @@ void JY61P_ParseAngle_16bit(uint8_t *buf) {
     jy61p_data.roll_raw = roll_raw;
     jy61p_data.pitch_raw = pitch_raw;
     jy61p_data.yaw_raw = yaw_raw;
+
+    // 角度: 32768 = 180°
+    jy61p_data.roll = roll_raw / 32768.0f * 180.0f;
+    jy61p_data.pitch = pitch_raw / 32768.0f * 180.0f;
+    jy61p_data.yaw = yaw_raw / 32768.0f * 180.0f;
 }
 // static void JY61P_ParseAngle(uint8_t *buf) {
 //     // 角度: 32768 = 180°
@@ -155,6 +163,18 @@ void JY61P_GetGyro(float *gx, float *gy, float *gz) {
     if (gx) *gx = jy61p_data.gx;
     if (gy) *gy = jy61p_data.gy;
     if (gz) *gz = jy61p_data.gz;
+}
+
+/**
+ * @brief 获取角速度原始数据 (16位ADC值)
+ * @param gx X轴原始值指针
+ * @param gy Y轴原始值指针
+ * @param gz Z轴原始值指针
+ */
+void JY61P_GetGyroRaw(int16_t *gx, int16_t *gy, int16_t *gz) {
+    if (gx) *gx = jy61p_data.gx_raw;
+    if (gy) *gy = jy61p_data.gy_raw;
+    if (gz) *gz = jy61p_data.gz_raw;
 }
 
 
@@ -247,8 +267,8 @@ void jy61p_byte_receive(uint8_t data) {
             break;
 
         case STATE_HEADER:
-            // 已收到0x55，检查第二个字节是否是有效数据类型
-            if (data == 0x51 || data == 0x52 || data == 0x53) {
+            // 已收到0x55，检查第二个字节是否是有效数据类型 (0x51-0x54)
+            if ((data >= 0x51 && data <= 0x54)) {
                 jy61p_buffer[1] = data;
                 rx_index = 2;
                 rx_state = STATE_DATA;
@@ -270,11 +290,16 @@ void jy61p_byte_receive(uint8_t data) {
 
             // 判断是否接收完整一帧 (11字节)
             if (rx_index >= 11) {
+                uint8_t type = jy61p_buffer[1];
+                if (type == 0x51) {
+                    JY61P_ParseAccel_16bit(jy61p_buffer);
+                } else if (type == 0x52) {
+                    JY61P_ParseGyro_16bit(jy61p_buffer);
+                } else if (type == 0x53) {
+                    JY61P_ParseAngle_16bit(jy61p_buffer);
+                }
+                jy61p_data.frame_count++;
 
-                // Serial_SendVar("temp",jy61p_buffer[3]);
-                JY61P_ParseAngle_16bit(jy61p_buffer);
-                JY61P_ParseGyro_16bit(jy61p_buffer);
-                JY61P_ParseAccel_16bit(jy61p_buffer);
                 // 重置状态机
                 rx_state = STATE_IDLE;
                 rx_index = 0;

@@ -49,6 +49,9 @@ void Serial_Init(void)
 	__HAL_UART_CLEAR_IDLEFLAG(&huart1);
 	HAL_UART_Receive_IT(&huart2, &temp_rxdata2, 1);
 	uart_sem = osSemaphoreNew(1, 0, NULL);  // 最大计数1, 初始可用0
+
+	/* 启动 USART6 中断接收 (JY61P 陀螺仪) */
+	HAL_UART_Receive_IT(&huart6, temp_rxdata6, 1);
 }
 
 /* ========== DMA TX 环型缓冲区 ========== */
@@ -406,7 +409,21 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
 		uint8_t temp = temp_rxdata6[0];
 		jy61p_byte_receive(temp);
 
-		if(huart->Instance == USART6) HAL_UART_Receive_IT(&huart6, temp_rxdata6, 1);
+		HAL_UART_Receive_IT(&huart6, temp_rxdata6, 1);
+	}
+}
+
+/**
+  * @brief UART 错误回调 — 检测到 ORE/PE/FE 时重新开启中断接收
+  */
+void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart)
+{
+	if (huart->Instance == USART6) {
+		/* 清除错误标志 (ORE/NE/FE/PE) — HAL 已清部分，再读一次 DR 彻底清 ORE */
+		volatile uint8_t tmp = huart6.Instance->DR;  (void)tmp;
+		__HAL_UART_CLEAR_FLAG(&huart6, UART_FLAG_ORE | UART_FLAG_NE | UART_FLAG_FE | UART_FLAG_PE);
+		/* 重新开启中断接收 */
+		HAL_UART_Receive_IT(&huart6, temp_rxdata6, 1);
 	}
 }
 
