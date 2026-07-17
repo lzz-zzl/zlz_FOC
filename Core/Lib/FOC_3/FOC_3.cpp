@@ -106,6 +106,10 @@ void FOC_3::init(const PIDCtrl &pid) {
     elect_angle_zero_calibration();
     set_volt(0, 0, 0);
 
+    //齿槽补偿
+    cogging_load_from_flash();
+    m_cogging_enable = true;
+
     HAL_TIM_Base_Start_IT(m_htim_pwm);
     HAL_TIM_Base_Start(m_htim_ctrl);        /* TIM5 计数但不进中断 */
 }
@@ -569,10 +573,21 @@ void FOC_3::cogging_save_to_flash() {
     }
 
     HAL_FLASH_Lock();
+
+    /* 写完 Flash 后使 D-Cache 失效，确保后续读回的是真实 Flash 内容 */
+#if defined(__DCACHE_PRESENT) && (__DCACHE_PRESENT == 1)
+    SCB_InvalidateDCache();
+#endif
+
     Serial_SendString("cogging saved\r\n");
 }
 
 void FOC_3::cogging_load_from_flash() {
+    /* 读之前先使 D-Cache 失效，确保读到真实的 Flash 内容 */
+#if defined(__DCACHE_PRESENT) && (__DCACHE_PRESENT == 1)
+    SCB_InvalidateDCache();
+#endif
+
     uint32_t addr = COGGING_FLASH_ADDR + m_id * COGGING_SLOT_SIZE;
     volatile uint16_t *base = (volatile uint16_t *)addr;
 
