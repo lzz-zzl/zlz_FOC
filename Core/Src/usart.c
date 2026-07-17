@@ -371,7 +371,7 @@ void HAL_UART_MspInit(UART_HandleTypeDef* uartHandle)
     HAL_NVIC_EnableIRQ(USART6_IRQn);
   /* USER CODE BEGIN USART6_MspInit 1 */
 
-  /* USART6_RX DMA Init — 暂注释
+  /* USART6_RX DMA Init */
   __HAL_RCC_DMA2_CLK_ENABLE();
   hdma_usart6_rx.Instance                 = DMA2_Stream1;
   hdma_usart6_rx.Init.Channel             = DMA_CHANNEL_5;
@@ -380,7 +380,7 @@ void HAL_UART_MspInit(UART_HandleTypeDef* uartHandle)
   hdma_usart6_rx.Init.MemInc              = DMA_MINC_ENABLE;
   hdma_usart6_rx.Init.PeriphDataAlignment = DMA_PDATAALIGN_BYTE;
   hdma_usart6_rx.Init.MemDataAlignment    = DMA_MDATAALIGN_BYTE;
-  hdma_usart6_rx.Init.Mode                = DMA_CIRCULAR;
+  hdma_usart6_rx.Init.Mode                = DMA_NORMAL;
   hdma_usart6_rx.Init.Priority            = DMA_PRIORITY_HIGH;
   hdma_usart6_rx.Init.FIFOMode            = DMA_FIFOMODE_DISABLE;
   if (HAL_DMA_Init(&hdma_usart6_rx) != HAL_OK)
@@ -390,7 +390,7 @@ void HAL_UART_MspInit(UART_HandleTypeDef* uartHandle)
 
   __HAL_LINKDMA(uartHandle, hdmarx, hdma_usart6_rx);
 
-  /* DMA 中断 (半/全传输回调) */
+  /* DMA 中断 (Stream1) */
   HAL_NVIC_SetPriority(DMA2_Stream1_IRQn, 5, 0);
   HAL_NVIC_EnableIRQ(DMA2_Stream1_IRQn);
 

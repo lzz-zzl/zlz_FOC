@@ -197,6 +197,7 @@ static void MT6701TaskFunc(void* /*argument*/) {
         //     static_cast<int16_t>(static_cast<int>(deg * 10.0f) % 10), 2);
 
         Serial_JustFloat(&deg,1);
+
         osDelay(10);
     }
 }

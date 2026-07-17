@@ -7,6 +7,9 @@ cmake_minimum_required(VERSION 3.22)
 # User is free to modify the file as much as necessary
 #
 
+enable_language(C ASM)          # 启用汇编支持
+set(CMAKE_SYSTEM_NAME Generic)  # 告诉 CMake 这是裸机嵌入式
+
 # Setup compiler settings
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED ON)

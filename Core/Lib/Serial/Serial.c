@@ -45,6 +45,9 @@ uint8_t temp_rxdata6[11];
 #define UART1_RX_BUF_SIZE  64
 static uint8_t uart1_rx_buf[UART1_RX_BUF_SIZE];
 
+/* USART6 DMA+IDLE 接收缓冲 (JY61P 陀螺仪) */
+#define UART6_RX_BUF_SIZE  256
+
 void Serial_Init(void)
 {
 	/* USART1/2 已在 main.c 中由 MX_USARTx_UART_Init() 初始化, 不再重复调用 */
@@ -54,7 +57,6 @@ void Serial_Init(void)
 	uart_sem = osSemaphoreNew(1, 0, NULL);  // 最大计数1, 初始可用0
 
 	/* 启动 USART6 DMA+IDLE 接收 (JY61P 陀螺仪) */
-	#define UART6_RX_BUF_SIZE  256
 	HAL_UARTEx_ReceiveToIdle_DMA(&huart6, uart6_rx_buf, UART6_RX_BUF_SIZE);
 	__HAL_UART_CLEAR_IDLEFLAG(&huart6);
 }
@@ -417,10 +419,12 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
 		}
 	}
 	else if(huart->Instance == USART6){
-		uint8_t temp = temp_rxdata6[0];
-		jy61p_byte_receive(temp);
-
-		HAL_UART_Receive_IT(&huart6, temp_rxdata6, 1);
+		/* DMA 缓冲收满 (256 字节) — 也喂给状态机再重启 DMA */
+		for (uint16_t i = 0; i < 256; i++) {
+			jy61p_byte_receive(uart6_rx_buf[i]);
+		}
+		HAL_UARTEx_ReceiveToIdle_DMA(&huart6, uart6_rx_buf, 256);
+		__HAL_UART_CLEAR_IDLEFLAG(&huart6);
 	}
 }
 
@@ -433,8 +437,9 @@ void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart)
 		/* 清除错误标志 (ORE/NE/FE/PE) — HAL 已清部分，再读一次 DR 彻底清 ORE */
 		volatile uint8_t tmp = huart6.Instance->DR;  (void)tmp;
 		__HAL_UART_CLEAR_FLAG(&huart6, UART_FLAG_ORE | UART_FLAG_NE | UART_FLAG_FE | UART_FLAG_PE);
-		/* 重新开启中断接收 */
-		HAL_UART_Receive_IT(&huart6, temp_rxdata6, 1);
+		/* 重新开启 DMA+IDLE 接收 */
+		HAL_UARTEx_ReceiveToIdle_DMA(&huart6, uart6_rx_buf, 256);
+		__HAL_UART_CLEAR_IDLEFLAG(&huart6);
 	}
 }
 
