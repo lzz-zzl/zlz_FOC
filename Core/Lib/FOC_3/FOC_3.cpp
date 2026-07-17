@@ -384,79 +384,71 @@ void FOC_3::period() {
 
     /* ===== 齿槽补偿学习 (正反向遍历 1440 个电角度，抵消反电动势) ===== */
     if (m_state == 121) {
-        static int16_t learn_angle = m_elect_angle;
-        static int16_t learn_location = m_encoder->refresh_raw();
-        static uint16_t learn_count = 0;
-        static uint8_t  learn_phase = 0;   /* 0=正向, 1=反向 */
 
-        if (m_cogging_learnState == 1) {
-            learn_angle = m_elect_angle;
-            learn_location = m_encoder->refresh_raw();
-            learn_count = 0;
-            learn_phase = 0;   /* 0=正向, 1=反向 */
-            m_cogging_learnState = 2;
+        if (m_cogging_learnState == 0) {
+            m_learn_angle = m_elect_angle;
+            m_learn_location = m_encoder->refresh_raw();
+            m_learn_count = 0;
+            m_cogging_learnState = 1; /*0=开始 1=正向, 2=反向 4=未开始*/
         }
 
         /* learn_location 是原始编码器值 (0~16383), 转成符号位置给 PID */
-        int16_t raw2pos = learn_location - m_rela_location_zero;
+        int16_t raw2pos = m_learn_location - m_rela_location_zero;
         if (raw2pos > 8191)       raw2pos -= 16384;
         else if (raw2pos < -8192) raw2pos += 16384;
         m_location_target = raw2pos;
 
         /* 位置到达 → 采样 */
         if (m_location == raw2pos) {
-            m_cogging_table[learn_angle] += m_i_q_q15;
-            m_cogging_count[learn_angle]++;
-            if (learn_phase == 0) {
-                if (m_cogging_count[learn_angle] >= 5) {
-                    learn_angle = (learn_angle + 1) % TABLE_SIZE;
-                    learn_count++;
+            m_cogging_table[m_learn_angle] += m_i_q_q15;
+            m_cogging_count[m_learn_angle]++;
+            if (m_cogging_learnState == 1) {
+                if (m_cogging_count[m_learn_angle] >= 5) {
+                    m_learn_angle = (m_learn_angle + 1) % TABLE_SIZE;
+                    m_learn_count++;
                 }
             }
-            else if (learn_phase == 1) {
-                if (m_cogging_count[learn_angle] >= 10) {
-                    if (learn_angle == 0) {
-                        learn_angle = TABLE_SIZE;
+            else if (m_cogging_learnState == 2) {
+                if (m_cogging_count[m_learn_angle] >= 10) {
+                    if (m_learn_angle == 0) {
+                        m_learn_angle = TABLE_SIZE;
                     }
-                    learn_angle = (learn_angle - 1) % TABLE_SIZE;
-                    learn_count++;
+                    m_learn_angle = (m_learn_angle - 1) % TABLE_SIZE;
+                    m_learn_count++;
                 }
             }
         }
 
         /* 搜索对应位置的编码器值 (相位决定方向) */
-        if (learn_phase == 0) {
+        if (m_cogging_learnState == 1) {
             /* 正向 */
-            while (elect_angle_from_location(learn_location) != learn_angle) {
-                learn_location++;
-                if (learn_location >= MT6701::RESOLUTION) learn_location = 0;
+            while (elect_angle_from_location(m_learn_location) != m_learn_angle) {
+                m_learn_location++;
+                if (m_learn_location >= MT6701::RESOLUTION) m_learn_location = 0;
             }
-        } else {
+        } else if (m_cogging_learnState == 2){
             /* 反向 */
-            while (elect_angle_from_location(learn_location) != learn_angle) {
-                learn_location--;
-                if (learn_location < 0) learn_location = MT6701::RESOLUTION - 1;
+            while (elect_angle_from_location(m_learn_location) != m_learn_angle) {
+                m_learn_location--;
+                if (m_learn_location < 0) m_learn_location = MT6701::RESOLUTION - 1;
             }
         }
 
         /* 当前相位完成 → 切换相位或停止 */
-        if (learn_count >= TABLE_SIZE) {
-            if (learn_phase == 0) {
+        if (m_learn_count >= TABLE_SIZE) {
+            if (m_cogging_learnState == 1) {
                 /* 正向完成 → 切到反向 */
-                learn_count = 0;
-                learn_phase = 1;
-                learn_angle = m_elect_angle;
-                learn_location = m_encoder->refresh_raw();
+                m_learn_count = 0;
+                m_cogging_learnState = 2;
+                m_learn_angle = m_elect_angle;
+                m_learn_location = m_encoder->refresh_raw();
             } else {
                 /* 反向完成 → 停止 */
-                learn_phase = 0;
+                m_cogging_learnState = 4;
                 cogging_learn_stop();
 
-                learn_angle = m_elect_angle;
-                learn_location = m_encoder->refresh_raw();
                 m_cogging_learnState = 0;
-                learn_count = 0;
-                learn_phase = 0;   /* 0=正向, 1=反向 */
+                m_learn_count = 0;
             }
         }
     }
@@ -519,7 +511,8 @@ void FOC_3::cogging_learn_start() {
     m_learn_angle    = m_elect_angle;         /* 从当前电角度开始 */
     m_learn_location = m_location;
     m_learn_count    = 0;
-    m_cogging_learnState = 1;
+    m_learn_count    = 0;
+    m_cogging_learnState = 0;
     m_state = 121;
 }
 
