@@ -12,6 +12,9 @@
 #include "JY61P.h"
 
 
+/* USART6 DMA 接收缓冲 (声明在 main.c) */
+extern uint8_t uart6_rx_buf[];
+
 osSemaphoreId_t uart_sem;
 
 void Serial_Printf(char *format, ...);
@@ -50,8 +53,10 @@ void Serial_Init(void)
 	HAL_UART_Receive_IT(&huart2, &temp_rxdata2, 1);
 	uart_sem = osSemaphoreNew(1, 0, NULL);  // 最大计数1, 初始可用0
 
-	/* 启动 USART6 中断接收 (JY61P 陀螺仪) */
-	HAL_UART_Receive_IT(&huart6, temp_rxdata6, 1);
+	/* 启动 USART6 DMA+IDLE 接收 (JY61P 陀螺仪) */
+	#define UART6_RX_BUF_SIZE  256
+	HAL_UARTEx_ReceiveToIdle_DMA(&huart6, uart6_rx_buf, UART6_RX_BUF_SIZE);
+	__HAL_UART_CLEAR_IDLEFLAG(&huart6);
 }
 
 /* ========== DMA TX 环型缓冲区 ========== */
@@ -355,6 +360,12 @@ void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size)
             receive_state_keyVal(uart1_rx_buf[i]);
         }
         HAL_UARTEx_ReceiveToIdle_DMA(&huart1, uart1_rx_buf, UART1_RX_BUF_SIZE);
+    }
+    else if (huart->Instance == USART6) {
+        for (uint16_t i = 0; i < Size; i++) {
+            jy61p_byte_receive(uart6_rx_buf[i]);
+        }
+        HAL_UARTEx_ReceiveToIdle_DMA(&huart6, uart6_rx_buf, UART6_RX_BUF_SIZE);
     }
 }
 
