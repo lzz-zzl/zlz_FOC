@@ -116,7 +116,7 @@ static void OLEDTaskFunc(void* /*argument*/) {
 
 
 
-static void FOC_3_test_task(void* /*argument*/) {
+static void FOC_3_task(void* /*argument*/) {
 
     Serial_Init();
     control_tim_start();
@@ -125,7 +125,7 @@ static void FOC_3_test_task(void* /*argument*/) {
     static control_PID m1_speed_pid, m1_loc_pid, m1_curq_pid, m1_curd_pid, m1_direct_pid;
     /* 初始化三环 PID 参数 */
     Control_PID_Init(&m1_speed_pid,   3000.0f, 200.0f, 0.0f, -32767.0f, 32767.0f, 20000.0f,20000.0f);
-    Control_PID_Init(&m1_loc_pid,     0.005f, 0.0f, 0.01f, -4.0f, 4.0f,1.0f, 15.0f);
+    Control_PID_Init(&m1_loc_pid,     0.0012f, 0.0f, 0.0002f, -4.0f, 4.0f,1.0f, 15.0f);
     Control_PID_Init(&m1_curq_pid,    1.0f, 0.04f, 0.0f, -32767.0f, 32767.0f, 250,20000);
     // lowpass_Filter curOutFilter = {0.1f,0.0f};
     // PID_EnableOutputFilter(&m1_curq_pid, lowpass_filter,&curOutFilter);
@@ -150,7 +150,7 @@ static void FOC_3_test_task(void* /*argument*/) {
     static control_PID m2_speed_pid, m2_loc_pid, m2_curq_pid, m2_curd_pid, m2_direct_pid;
     /* 初始化三环 PID 参数 */
     Control_PID_Init(&m2_speed_pid,   3000.0f, 200.0f, 0.0f, -32767.0f, 32767.0f, 20000.0f,2000.0f);
-    Control_PID_Init(&m2_loc_pid,     0.005f, 0.0f, 0.01f, -4.0f, 4.0f,1.0f, 15.0f);
+    Control_PID_Init(&m2_loc_pid,     0.004f, 0.0f, 0.02f, -4.0f, 4.0f,1.0f, 15.0f);
     Control_PID_Init(&m2_curq_pid,    1.0f, 0.04f, 0.0f, -32767.0f, 32767.0f, 250,20000);
     // lowpass_Filter curOutFilter = {0.1f,0.0f};
     // PID_EnableOutputFilter(&m2_curq_pid, lowpass_filter,&curOutFilter);
@@ -168,6 +168,8 @@ static void FOC_3_test_task(void* /*argument*/) {
     static MT6701 m2_enc({&hspi2, GPIOB, GPIO_PIN_12});
     static FOC_3 motor2({&m2_enc,I_check_lowpass_M2, &htim2, &htim3, 11, 12.0f, 7.5f, 1.7f, 1, "motor1"});
     motor2.init(m2_pid);
+
+    motor2.set_location_zero(-4500);
     motor2.set_location_limit(4000,-4000);
 
     for (;;) {
@@ -202,7 +204,7 @@ static void MT6701TaskFunc(void* /*argument*/) {
     }
 }
 
-float gx, gy, gz, roll, pitch, yaw;
+int16_t gx, gy, gz, roll, pitch, yaw;
 float out[6] ;
 static void JY61PTestTask(void* /*argument*/) {
     /* USART6 接收已在 Serial_Init() 中启动 */
@@ -212,20 +214,20 @@ static void JY61PTestTask(void* /*argument*/) {
 
     for (;;) {
         /* 读陀螺仪数据 (°/s) */
-        JY61P_GetGyro(&gx, &gy, &gz);
-        JY61P_GetAngle(&roll, &pitch, &yaw);
-        out[0] = gx;
-        out[1] = gy;
-        out[2] = gz;
-        out[3] = roll;
-        out[4] = pitch;
-        out[5] = yaw;
+        JY61P_GetGyroRaw(&gx, &gy, &gz);
+        JY61P_GetAngleRaw(&roll, &pitch, &yaw);
+        out[0] = (float)gx;
+        out[1] = (float)gy;
+        out[2] = (float)gz;
+        out[3] = (float)roll;
+        out[4] = (float)pitch;
+        out[5] = (float)yaw;
 
 
         /* VOFA+ justfloat 协议: gx gy gz roll pitch yaw */
         // Serial_JustFloat(out, 6);
 
-        OLED_ShowNum(4,1,(int16_t)(out[1]*1000),5);
+        OLED_ShowSignedNum(4,1,pitch,6);
         osDelay(10);
     }
 }
@@ -269,16 +271,22 @@ static void task_printf(void * /*argument*/) {
         }else if (FOC_3::pid_debug == 3) {
         FOC_3::showPID_location(temp);
         }
-        temp[4] = test_curdata[1];
+        // temp[4] = test_curdata[1];
         // temp[4] = FOC_3::instances[0]->get_iq_target();
         // temp[5] = test_curdata[2];
 
 
-        // Serial_JustFloat(temp,5);
-        Serial_JustFloat(out,6);
+        Serial_JustFloat(temp,5);
+        // temp[0] = (float)out[1];
+        // Serial_JustFloat(out,6);
         osDelay(1);
     }
 }
+
+void sin_control() {
+
+}
+
 
 
 // ====================================================================
@@ -298,7 +306,7 @@ static void CreateTasks() {
         // { "FOC_Task",    &FOCTaskFunc,     config::FOC_STACK_SIZE,    config::FOC_PRIORITY },
         { "task_printf", &task_printf,  256 * 4 , 42 },
         { "JY61P_Test",  &JY61PTestTask,   256 * 4,                  40 },
-        { "FOC_3_test_task",    &FOC_3_test_task,     512*4,    45 },
+        { "FOC_3_task",    &FOC_3_task,     512*4,    45 },
     };
 
     for (const auto& t : tasks) {

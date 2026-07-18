@@ -28,7 +28,6 @@
 //
 
 #include "MT6701.h"
-
 /* ========================================================================== */
 /*                          微秒级延时 (死循环近似)                            */
 /* ========================================================================== */
@@ -245,14 +244,12 @@ int16_t MT6701::get_angle_14bit() const {
 /* ========================================================================== */
 
 float MT6701::calc_speed_rpm() {
-    uint32_t now     = HAL_GetTick();
-    uint32_t dt_ms   = now - m_last_tick;
-    dt_ms = 1;
-    if (m_last_tick == 0 || dt_ms == 0) {
-        m_last_tick = now;
-        m_last_angle_14bit = m_angle_14bit;
-        return 0.0f;
-    }
+    uint32_t dt_ms = 4;
+    // if (m_last_tick == 0 || dt_ms == 0) {
+    //     m_last_tick = now;
+    //     m_last_angle_14bit = m_angle_14bit;
+    //     return 0.0f;
+    // }
 
     int16_t delta = m_angle_14bit - m_last_angle_14bit;
     int16_t error = 2;  // 死区，忽略微小抖动
@@ -270,7 +267,7 @@ float MT6701::calc_speed_rpm() {
     }
 
     m_last_angle_14bit = m_angle_14bit;
-    m_last_tick       = now;
+    // m_last_tick       = now;
 
     return (float)delta * 60000.0f / (float)RESOLUTION / (float)dt_ms;
 }
@@ -331,254 +328,6 @@ float MT6701_GetDeg(void)
 int32_t MT6701_GetTurns(void)
 {
     return g_mt6701 ? g_mt6701->get_rotation_count() : 0;
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 

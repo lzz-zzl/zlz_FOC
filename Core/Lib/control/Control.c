@@ -1,6 +1,7 @@
 // ... existing code ...
 #include "Control.h"
 #include "tim.h"
+#include <math.h>
 
 float none_filter(void *para, float input) {
     return input;
@@ -303,3 +304,26 @@ uint32_t tim_dif_stop(uint8_t i) {
     tim_dif[i] = get_c_tim_count() - tim_dif_start_p[i];
     return tim_dif[i];
 }
+
+/* ======================== 正弦信号发生器 ======================== */
+/* 该函数在 200Hz (5ms) 下调用，内部相位按 dt = 0.005s 累加 */
+
+void SineGen_Init(SineGen *sg, float amplitude, float period, float offset) {
+    sg->amplitude = amplitude;
+    sg->period    = period;
+    sg->phase     = 0.0f;
+    sg->offset    = offset;
+}
+
+float SineGen_Calc(SineGen *sg) {
+    const float dt = 0.005f;                        /* 200Hz 调用周期 */
+    float omega = 2.0f * 3.14159265f / sg->period; /* 角频率 */
+    float value = sg->amplitude * sinf(sg->phase) + sg->offset;
+
+    sg->phase += omega * dt;
+    if (sg->phase >= 2.0f * 3.14159265f) {
+        sg->phase -= 2.0f * 3.14159265f;           /* 防止 float 溢出 */
+    }
+    return value;
+}
+

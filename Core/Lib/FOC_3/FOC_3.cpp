@@ -285,8 +285,6 @@ void FOC_3::current_pi_loop() {
 
 
 void FOC_3::speed_pid_loop() {
-    m_speed_obj.Target = m_speed_target;
-    if (m_location>m_max_location+500 || m_location<m_min_location-500){m_speed_obj.Target=0;}
 
     m_speed_obj.Actual = m_speed;
     m_i_q_target = PID_Calculate(m_speed_pid, &m_speed_obj);
@@ -338,19 +336,23 @@ void FOC_3::period() {
         m_location = m_location_temp;
     }
 
+    m_speed_obj.Target = m_speed_target;
+    if (m_location>m_max_location+500 || m_location<m_min_location-500){
+        m_disable();
+    }
 
     elect_angle_from_encoder();
     current_handle();
     int16_t m_i_a, m_i_b;
     m_per_count++;
 
-    if (m_per_count % 15 == 0) {
+    if (m_per_count % 60 == 0) {
          if (m_state == 4 || m_state == 121) {
              location_target_pid();
              move(m_elect_angle);
          }
     }
-    if (m_per_count % 15 == 0) {
+    if (m_per_count % 60 == 0) {
         m_speed = m_encoder->calc_speed_rpm() / 60.0f;
         if (m_state == 3 || m_state == 4 | m_state == 121) {
             speed_pid_loop();

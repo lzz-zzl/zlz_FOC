@@ -8,6 +8,18 @@ extern "C" {
 #endif
 
 
+/* 正弦信号发生器 */
+typedef struct {
+    float amplitude;    /**< 振幅 */
+    float period;       /**< 周期 (秒) */
+    float phase;        /**< 当前相位 (弧度) */
+    float offset;       /**< 直流偏置 */
+} SineGen;
+
+void SineGen_Init(SineGen *sg, float amplitude, float period, float offset);
+float SineGen_Calc(SineGen *sg);
+
+
 typedef struct {
     float alpha;
     float last_value;

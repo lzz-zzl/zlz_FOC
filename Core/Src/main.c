@@ -98,9 +98,8 @@ void HAL_ADC_ConvHalfCpltCallback(ADC_HandleTypeDef* hadc)
 
     static int adc_count = 0;
     adc_count++;
-    if (adc_count >= 7500) {
-      // HAL_GPIO_TogglePin(GPIOE, GPIO_PIN_10);
-      // Serial_SendVar("count",1);
+    if (adc_count >= 38) {
+
       adc_dma_count++;
       adc_count = 0;
     }
