@@ -317,6 +317,8 @@ void SineGen_Init(SineGen *sg, float amplitude, float period, float offset) {
 
 float SineGen_Calc(SineGen *sg) {
     const float dt = 0.005f;                        /* 200Hz 调用周期 */
+    if (sg->period <= 0.0001f) return sg->offset;   /* 防除零 → NaN */
+
     float omega = 2.0f * 3.14159265f / sg->period; /* 角频率 */
     float value = sg->amplitude * sinf(sg->phase) + sg->offset;
 

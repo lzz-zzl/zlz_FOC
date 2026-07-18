@@ -7,6 +7,9 @@
 #include "cmsis_os.h"      // CMSIS 头文件自带 extern "C"
 #include "FOC_3.h"
 
+#include <cstring>
+#include <cstdlib>
+
 // C 库头文件 — 没有 extern "C" 守卫，需要手动包裹
 extern "C" {
 #include "OLED.h"
@@ -73,6 +76,50 @@ static void FOC_3_test_task(void* argument);
 // 任务函数实现
 // ====================================================================
 
+/* ======================== 正弦信号控制器命令解析 ======================== */
+/* 串口格式 (VOFA+ 键值对):  key:value
+ *   sin_start    — 启动输出
+ *   sin_stop     — 停止输出
+ *   sin_amp:2.0  — 设置振幅
+ *   sin_period:5.0 — 设置周期 (秒)
+ *   sin_offset:1.0 — 设置直流偏置
+ */
+static SineGen g_sin = {0.5f, 1.0f, 0.0f, 0.0f};
+static bool     g_sin_en = false;
+
+void Sin_Parse(char *cmd) {
+    char *key = strtok(cmd, ":");  // 支持空格、逗号、等号分隔
+    char *val_str = strtok(NULL, ":");
+    float val = atof(val_str);
+
+    if (strcmp(key, "sin_start") == 0) {
+        g_sin_en = true;
+    }
+    else if (strcmp(key, "sin_stop") == 0) {
+        g_sin_en = false;
+    }
+    else if (strcmp(key, "sin_amp") == 0) {
+        g_sin.amplitude = val;
+    }
+    else if (strcmp(key, "sin_period") == 0) {
+        g_sin.period = (val > 0.0001f) ? val : 0.001f;   /* 防设成 0 */
+    }
+    else if (strcmp(key, "sin_offset") == 0) {
+        g_sin.offset = val;
+    }
+}
+
+float test_sin;
+void Sin_control() {
+    if (!g_sin_en) return;
+    float temp = SineGen_Calc(&g_sin);
+    test_sin = temp;
+    FOC_3::instances[0]->set_speed_target(temp);
+}
+
+
+
+
 static void OLEDTaskFunc(void* /*argument*/) {
     OLED_Init();
     for (;;) {
@@ -113,8 +160,6 @@ static void OLEDTaskFunc(void* /*argument*/) {
         osDelay(50);
     }
 }
-
-
 
 static void FOC_3_task(void* /*argument*/) {
 
@@ -175,6 +220,7 @@ static void FOC_3_task(void* /*argument*/) {
     for (;;) {
         osSemaphoreAcquire(uart_sem, osWaitForever);
         FOC_3_parse_keyValue(kv_buf);
+        Sin_Parse(kv_buf);
         // motor1.error_handle();
         // motor2.error_handle();
         // osDelay(10);
@@ -271,7 +317,7 @@ static void task_printf(void * /*argument*/) {
         }else if (FOC_3::pid_debug == 3) {
         FOC_3::showPID_location(temp);
         }
-        // temp[4] = test_curdata[1];
+        temp[4] = test_sin;
         // temp[4] = FOC_3::instances[0]->get_iq_target();
         // temp[5] = test_curdata[2];
 
@@ -282,11 +328,6 @@ static void task_printf(void * /*argument*/) {
         osDelay(1);
     }
 }
-
-void sin_control() {
-
-}
-
 
 
 // ====================================================================

@@ -1,4 +1,4 @@
-//
+
 // Created by zhang on 2026/6/1.
 //
 
@@ -21,6 +21,8 @@ void Task_Serial_Process(void);
 
 void App_Task(void *argument);
 void App_Task_Create(void);
+
+    void Sin_control();
 
 #ifdef __cplusplus
 }
