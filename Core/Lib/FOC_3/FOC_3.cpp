@@ -611,11 +611,9 @@ void FOC_3::cogging_load_from_flash() {
 /*                  串口命令解析 (VOFA+ 键值对)                                */
 /* ========================================================================== */
 
-void FOC_3::parse_keyValue(char * cmd)
+void FOC_3::parse_keyValue(const char *key, char *val_str)
 {
-    char *key = strtok(cmd, ":");  // 支持空格、逗号、等号分隔
-    char *val_str = strtok(NULL, ":");
-    float val = atof(val_str);
+    float val = val_str ? atof(val_str) : 0.0f;
     if (strcmp(key, "M_debug") == 0) {
         motorID_debug = (uint8_t)val;
     }else if (strcmp(key, "stop") == 0) {
@@ -803,8 +801,8 @@ extern "C" void FOC_3_period() {
     FOC_3::Motors_period();
 }
 
-void FOC_3_parse_keyValue(char * cmd) {
-    FOC_3::parse_keyValue(cmd);
+void FOC_3_parse_keyValue(char *key, char *val_str) {
+    FOC_3::parse_keyValue(key, val_str);
 }
 
 // void FOC_3::show

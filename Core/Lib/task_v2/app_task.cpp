@@ -10,6 +10,17 @@
 #include <cstring>
 #include <cstdlib>
 
+/* 共用的键值对解析: 将 "key:value\0" 原地断开 */
+static void parse_kv(char *cmd, char **key, char **val_str) {
+    *key = cmd;
+    *val_str = NULL;
+    char *p = strchr(cmd, ':');
+    if (p) {
+        *p = '\0';
+        *val_str = p + 1;
+    }
+}
+
 // C 库头文件 — 没有 extern "C" 守卫，需要手动包裹
 extern "C" {
 #include "OLED.h"
@@ -87,10 +98,8 @@ static void FOC_3_test_task(void* argument);
 static SineGen g_sin = {0.5f, 1.0f, 0.0f, 0.0f};
 static bool     g_sin_en = false;
 
-void Sin_Parse(char *cmd) {
-    char *key = strtok(cmd, ":");  // 支持空格、逗号、等号分隔
-    char *val_str = strtok(NULL, ":");
-    float val = atof(val_str);
+void Sin_Parse(const char *key, const char *val_str) {
+    float val = val_str ? atof(val_str) : 0.0f;
 
     if (strcmp(key, "sin_start") == 0) {
         g_sin_en = true;
@@ -114,7 +123,7 @@ void Sin_control() {
     if (!g_sin_en) return;
     float temp = SineGen_Calc(&g_sin);
     test_sin = temp;
-    FOC_3::instances[0]->set_speed_target(temp);
+    FOC_3::instances[0]->set_location_target(test_sin);
 }
 
 
@@ -195,7 +204,7 @@ static void FOC_3_task(void* /*argument*/) {
     static control_PID m2_speed_pid, m2_loc_pid, m2_curq_pid, m2_curd_pid, m2_direct_pid;
     /* 初始化三环 PID 参数 */
     Control_PID_Init(&m2_speed_pid,   3000.0f, 200.0f, 0.0f, -32767.0f, 32767.0f, 20000.0f,2000.0f);
-    Control_PID_Init(&m2_loc_pid,     0.004f, 0.0f, 0.02f, -4.0f, 4.0f,1.0f, 15.0f);
+    Control_PID_Init(&m2_loc_pid,     0.0004f, 0.0f, 0.0002f, -4.0f, 4.0f,1.0f, 15.0f);
     Control_PID_Init(&m2_curq_pid,    1.0f, 0.04f, 0.0f, -32767.0f, 32767.0f, 250,20000);
     // lowpass_Filter curOutFilter = {0.1f,0.0f};
     // PID_EnableOutputFilter(&m2_curq_pid, lowpass_filter,&curOutFilter);
@@ -219,8 +228,10 @@ static void FOC_3_task(void* /*argument*/) {
 
     for (;;) {
         osSemaphoreAcquire(uart_sem, osWaitForever);
-        FOC_3_parse_keyValue(kv_buf);
-        Sin_Parse(kv_buf);
+        char *key, *val;
+        parse_kv(kv_buf, &key, &val);
+        FOC_3_parse_keyValue(key, val);
+        Sin_Parse(key, val);
         // motor1.error_handle();
         // motor2.error_handle();
         // osDelay(10);

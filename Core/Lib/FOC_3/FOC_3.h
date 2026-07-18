@@ -111,7 +111,7 @@ public:
 
 
     /* 串口命令解析 (VOFA+ 键值对) */
-    static void parse_keyValue(char * cmd);
+    static void parse_keyValue(const char *key, char *val_str);
     static void ParseCmd(const char *key, float val);  /* 使用默认实例 */
 
 private:
@@ -258,7 +258,7 @@ extern "C" {
 #endif
 
     void FOC_3_period();
-    void FOC_3_parse_keyValue(char * cmd);
+    void FOC_3_parse_keyValue(char *key, char *val_str);
 
 #ifdef __cplusplus
 }
