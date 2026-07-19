@@ -240,8 +240,10 @@ static void FOC_3_task(void* /*argument*/) {
 
          int32_t dt =get_tim_dif(1);
 
-        Serial_SendVar("dt",dt);
-        Serial_SendVar("dt",get_tim_dif(2));
+        Serial_Printf("3: %d\n",get_tim_dif(3));
+        Serial_Printf("4: %d\n",get_tim_dif(4));
+        Serial_Printf("1: %d\n",dt);
+        Serial_Printf("0: %d\n",get_tim_dif(0));
 
         // motor1.error_handle();
         // motor2.error_handle();
@@ -368,7 +370,7 @@ static void CreateTasks() {
         { "OLED_Task",   &OLEDTaskFunc,    config::OLED_STACK_SIZE,   30 },
         // { "FOC_Task",    &FOCTaskFunc,     config::FOC_STACK_SIZE,    config::FOC_PRIORITY },
         { "task_printf", &task_printf,  256 * 4 , 42 },
-        { "JY61P_Test",  &JY61PTestTask,   256 * 4,                  40 },
+        // { "JY61P_Test",  &JY61PTestTask,   256 * 4,                  40 },
         { "FOC_3_task",    &FOC_3_task,     512*4,    45 },
     };
 

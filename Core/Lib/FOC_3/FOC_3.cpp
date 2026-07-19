@@ -182,6 +182,7 @@ void FOC_3::elect_angle_analog(float rad_s) {
 
 int16_t test_i_a,test_i_b,test_i_c;
 void FOC_3::current_handle() {
+    tim_dif_start(3);
     m_get_current(&m_i_a, &m_i_b);
 
     test_i_a = m_i_a;
@@ -189,6 +190,7 @@ void FOC_3::current_handle() {
 
     current_clarke(m_i_a, m_i_b);
     current_park();
+    tim_dif_stop(3);
 }
 
 
@@ -232,11 +234,13 @@ void FOC_3::svpwm_calculate() {
 int16_t test_u_a,test_u_b;
 
 void FOC_3::move(int16_t angle) {
+    tim_dif_start(4);
     inv_park_clark_q15(angle);
     svpwm_calculate();
     set_volt(m_ua, m_ub, m_uc);
     test_u_a = m_ua;
     test_u_b = m_ub;
+    tim_dif_stop(4);
 }
 
 /* ========================================================================== */
@@ -335,28 +339,23 @@ void FOC_3::period() {
     } else {
         m_location = m_location_temp;
     }
-
-    m_speed_obj.Target = m_speed_target;
     if (m_location>m_max_location+500 || m_location<m_min_location-500){
         m_disable();
     }
 
     elect_angle_from_encoder();
     current_handle();
-    int16_t m_i_a, m_i_b;
     m_per_count++;
 
     if (m_per_count % 60 == 0) {
          if (m_state == 4 || m_state == 121) {
              location_target_pid();
-             move(m_elect_angle);
          }
     }
     if (m_per_count % 60 == 1) {
         m_speed = m_encoder->calc_speed_rpm() / 60.0f;
         if (m_state == 3 || m_state == 4 | m_state == 121) {
             speed_pid_loop();
-            move(m_elect_angle);
         }
     }
 
@@ -369,20 +368,14 @@ void FOC_3::period() {
     tim_dif_start(2);
     if (m_state == 1) {
         elect_angle_from_encoder();
-
         elect_angle_analog(m_speed_analog);
-        // m_ud = 6000;
-        // m_uq = 0;
         move(m_elect_angle_A);
-    }
-    else if (m_state == 2) {
+    }else if (m_state == 2) {
         // m_ud = 0;
         elect_angle_from_encoder();
         // elect_angle_analog(m_speed_analog);
         move(m_elect_angle);
-    }
-
-    else if (m_state == 6 || m_state == 3|| m_state == 4 || m_state == 121) {
+    }else if (m_state == 6 || m_state == 3|| m_state == 4 || m_state == 121) {
         if (driver_en) {
             current_pi_loop();
         }
@@ -792,17 +785,17 @@ void FOC_3::showPID_location(float *data) {
 }
 
 void FOC_3::Motors_period() {
-    tim_dif_start(1);
     for (uint8_t i = 0; i < 4; i++) {
         if (instances[i]) {
             instances[i]->period();
         }
     }
-    tim_dif_stop(1);
 }
 
 extern "C" void FOC_3_period() {
+    tim_dif_start(1);
     FOC_3::Motors_period();
+    tim_dif_stop(1);
 }
 
 void FOC_3_parse_keyValue(char *key, char *val_str) {

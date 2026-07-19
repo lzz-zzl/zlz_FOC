@@ -102,14 +102,7 @@ float PID_Calculate(control_PID *pid, control_object *obj){
         derivative = pid->Derivative_filter(pid->Derivative_filter_para, derivative);
     }
 
-    /* ===== P 项单独限幅（可选）：避免 P 项瞬间把输出推满 ===== */
-    float p_term = pid->kp * pid->Error_now;
-    float p_max  = pid->OutMax * 0.8f;                     // P 贡献最多 80% 输出范围
-    if (p_term >  p_max) p_term =  p_max;
-    if (p_term < -p_max) p_term = -p_max;
-    /* ====================================================== */
-
-    obj->Out = p_term +
+    obj->Out = pid->kp * pid->Error_now +
                pid->Error_output +
                pid->kd * derivative;
 
@@ -155,14 +148,10 @@ float PID_Calculate_Fast(control_PID *pid, control_object *obj){
 
     float derivative = pid->Error_now - pid->Error_pass;
 
-    /* ===== P 项单独限幅（可选）：避免 P 项瞬间把输出推满 ===== */
-    float p_term = pid->kp * pid->Error_now;
-    float p_max  = pid->OutMax * 0.8f;                     // P 贡献最多 80% 输出范围
-    if (p_term >  p_max) p_term =  p_max;
-    if (p_term < -p_max) p_term = -p_max;
+
     /* ====================================================== */
 
-    obj->Out = p_term +
+    obj->Out = pid->kp * pid->Error_now +
                pid->Error_output +
                pid->kd * derivative;
 
