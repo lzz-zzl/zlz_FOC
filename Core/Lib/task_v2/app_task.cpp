@@ -240,8 +240,10 @@ static void FOC_3_task(void* /*argument*/) {
 
          int32_t dt =get_tim_dif(1);
 
-        Serial_Printf("3: %d\n",get_tim_dif(3));
         Serial_Printf("4: %d\n",get_tim_dif(4));
+        Serial_Printf("3: %d\n",get_tim_dif(3));
+        Serial_Printf("2: %d\n",get_tim_dif(2));
+        Serial_Printf("5: %d\n",get_tim_dif(5));
         Serial_Printf("1: %d\n",dt);
         Serial_Printf("0: %d\n",get_tim_dif(0));
 

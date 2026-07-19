@@ -382,8 +382,8 @@ uint32_t get_c_tim_count() {
     c_tim_count = TIM5->CNT;
     return c_tim_count;
 }
-uint32_t tim_dif_start_p[5];
-uint32_t tim_dif[5];
+uint32_t tim_dif_start_p[10];
+uint32_t tim_dif[10];
 
 uint32_t get_tim_dif(uint8_t i) {
     return tim_dif[i];

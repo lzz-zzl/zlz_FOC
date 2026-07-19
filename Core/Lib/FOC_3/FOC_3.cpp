@@ -182,7 +182,6 @@ void FOC_3::elect_angle_analog(float rad_s) {
 
 int16_t test_i_a,test_i_b,test_i_c;
 void FOC_3::current_handle() {
-    tim_dif_start(3);
     m_get_current(&m_i_a, &m_i_b);
 
     test_i_a = m_i_a;
@@ -190,7 +189,6 @@ void FOC_3::current_handle() {
 
     current_clarke(m_i_a, m_i_b);
     current_park();
-    tim_dif_stop(3);
 }
 
 
@@ -234,13 +232,11 @@ void FOC_3::svpwm_calculate() {
 int16_t test_u_a,test_u_b;
 
 void FOC_3::move(int16_t angle) {
-    tim_dif_start(4);
     inv_park_clark_q15(angle);
     svpwm_calculate();
     set_volt(m_ua, m_ub, m_uc);
     test_u_a = m_ua;
     test_u_b = m_ub;
-    tim_dif_stop(4);
 }
 
 /* ========================================================================== */
@@ -276,7 +272,7 @@ void FOC_3::current_pi_loop() {
         target += (float)m_cogging_table[m_elect_angle];
     m_current_q_obj.Target = target;
     m_current_q_obj.Actual = (float)m_i_q_q15;
-    m_uq = (int16_t)PID_Calculate_Fast_debug(m_current_q_pid, &m_current_q_obj,test_curdata) ;
+    m_uq = (int16_t)PID_Calculate_Fast(m_current_q_pid, &m_current_q_obj) ;
 
     m_current_d_obj.Target = 0.0f;
     m_current_d_obj.Actual = (float)m_i_d_q15;
@@ -330,7 +326,10 @@ void FOC_3::direct_location_pid() {
 /* ========================================================================== */
 
 void FOC_3::period() {
+    tim_dif_start(5);
+    tim_dif_start(4);
     m_location_origin = m_encoder->refresh_raw();
+    tim_dif_stop(4);
     int16_t m_location_temp = m_location_origin- m_rela_location_zero;
     if (m_location_temp > 8191) {
         m_location = m_location_temp - 16384;
@@ -339,12 +338,16 @@ void FOC_3::period() {
     } else {
         m_location = m_location_temp;
     }
+
+    m_speed_obj.Target = m_speed_target;
     if (m_location>m_max_location+500 || m_location<m_min_location-500){
         m_disable();
     }
 
+    tim_dif_start(3);
     elect_angle_from_encoder();
     current_handle();
+
     m_per_count++;
 
     if (m_per_count % 60 == 0) {
@@ -365,7 +368,7 @@ void FOC_3::period() {
         move(m_elect_angle);
     }
 
-    tim_dif_start(2);
+    tim_dif_stop(3);
     if (m_state == 1) {
         elect_angle_from_encoder();
         elect_angle_analog(m_speed_analog);
@@ -375,16 +378,19 @@ void FOC_3::period() {
         elect_angle_from_encoder();
         // elect_angle_analog(m_speed_analog);
         move(m_elect_angle);
+
     }else if (m_state == 6 || m_state == 3|| m_state == 4 || m_state == 121) {
+    tim_dif_start(2);
         if (driver_en) {
             current_pi_loop();
         }
         elect_angle_from_encoder();
         move(m_elect_angle);
+    tim_dif_stop(2);
     }
 
-    tim_dif_stop(2);
 
+    tim_dif_stop(5);
     /* ===== 齿槽补偿学习 (正反向遍历 1440 个电角度，抵消反电动势) ===== */
     if (m_state == 121) {
 
