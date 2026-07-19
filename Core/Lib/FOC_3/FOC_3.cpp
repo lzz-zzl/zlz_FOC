@@ -272,11 +272,11 @@ void FOC_3::current_pi_loop() {
         target += (float)m_cogging_table[m_elect_angle];
     m_current_q_obj.Target = target;
     m_current_q_obj.Actual = (float)m_i_q_q15;
-    m_uq = (int16_t)PID_Calculate_debug(m_current_q_pid, &m_current_q_obj,test_curdata) ;
+    m_uq = (int16_t)PID_Calculate_Fast_debug(m_current_q_pid, &m_current_q_obj,test_curdata) ;
 
     m_current_d_obj.Target = 0.0f;
     m_current_d_obj.Actual = (float)m_i_d_q15;
-    m_ud = (int16_t)PID_Calculate(m_current_d_pid, &m_current_d_obj);
+    m_ud = (int16_t)PID_Calculate_Fast(m_current_d_pid, &m_current_d_obj);
 }
 
 /* ========================================================================== */
@@ -287,7 +287,7 @@ void FOC_3::current_pi_loop() {
 void FOC_3::speed_pid_loop() {
 
     m_speed_obj.Actual = m_speed;
-    m_i_q_target = PID_Calculate(m_speed_pid, &m_speed_obj);
+    m_i_q_target = PID_Calculate_Fast(m_speed_pid, &m_speed_obj);
 }
 
 void FOC_3::location_target_pid() {
@@ -301,7 +301,7 @@ void FOC_3::location_target_pid() {
     m_location_obj.Target = (float)(m_location + pos_err);
     m_location_obj.Actual = (float)m_location;
 
-    m_speed_target = PID_Calculate(m_location_pid, &m_location_obj);
+    m_speed_target = PID_Calculate_Fast(m_location_pid, &m_location_obj);
 
     if (m_location == m_location_target) {
         m_location_target_state = 1;
@@ -318,7 +318,7 @@ void FOC_3::direct_location_pid() {
     m_location_obj.Target = (float)m_location_target;
     m_location_obj.Actual = (float)m_location;
 
-    m_i_q_ref = PID_Calculate(m_direct_pid, &m_location_obj);
+    m_i_q_ref = PID_Calculate_Fast(m_direct_pid, &m_location_obj);
 }
 
 /* ========================================================================== */
@@ -326,9 +326,7 @@ void FOC_3::direct_location_pid() {
 /* ========================================================================== */
 
 void FOC_3::period() {
-    tim_dif_start(2);
     m_location_origin = m_encoder->refresh_raw();
-    tim_dif_stop(2);
     int16_t m_location_temp = m_location_origin- m_rela_location_zero;
     if (m_location_temp > 8191) {
         m_location = m_location_temp - 16384;
@@ -354,7 +352,7 @@ void FOC_3::period() {
              move(m_elect_angle);
          }
     }
-    if (m_per_count % 60 == 0) {
+    if (m_per_count % 60 == 1) {
         m_speed = m_encoder->calc_speed_rpm() / 60.0f;
         if (m_state == 3 || m_state == 4 | m_state == 121) {
             speed_pid_loop();
@@ -367,6 +365,8 @@ void FOC_3::period() {
         m_ud = 0;
         move(m_elect_angle);
     }
+
+    tim_dif_start(2);
     if (m_state == 1) {
         elect_angle_from_encoder();
 
@@ -381,6 +381,7 @@ void FOC_3::period() {
         // elect_angle_analog(m_speed_analog);
         move(m_elect_angle);
     }
+
     else if (m_state == 6 || m_state == 3|| m_state == 4 || m_state == 121) {
         if (driver_en) {
             current_pi_loop();
@@ -389,6 +390,7 @@ void FOC_3::period() {
         move(m_elect_angle);
     }
 
+    tim_dif_stop(2);
 
     /* ===== 齿槽补偿学习 (正反向遍历 1440 个电角度，抵消反电动势) ===== */
     if (m_state == 121) {

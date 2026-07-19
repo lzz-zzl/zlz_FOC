@@ -293,9 +293,9 @@ static void JY61PTestTask(void* /*argument*/) {
 
 
         /* VOFA+ justfloat 协议: gx gy gz roll pitch yaw */
-        // Serial_JustFloat(out, 6);
+        Serial_JustFloat(out, 6);
 
-        OLED_ShowSignedNum(4,1,pitch,6);
+        // OLED_ShowSignedNum(4,1,pitch,6);
         osDelay(10);
     }
 }
@@ -344,9 +344,9 @@ static void task_printf(void * /*argument*/) {
         // temp[5] = test_curdata[2];
 
 
-        // Serial_JustFloat(temp,5);
+        Serial_JustFloat(temp,5);
         // temp[0] = (float)out[1];
-        Serial_JustFloat(out,6);
+        // Serial_JustFloat(out,6);
         osDelay(1);
     }
 }

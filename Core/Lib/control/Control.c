@@ -126,6 +126,56 @@ float PID_Calculate(control_PID *pid, control_object *obj){
     pid->Error_pass = pid->Error_now;
     return obj->Out;
 }
+float PID_Calculate_Fast(control_PID *pid, control_object *obj){
+    pid->Error_now = obj->Target - obj->Actual;
+
+    /* 误差输入限幅，防止 15kHz 下积分快速饱和 */
+    float err_i = pid->Error_now;
+    if (pid->Er_limit > 0.0f) {
+        if (err_i > pid->Er_limit)  err_i = pid->Er_limit;
+        if (err_i < -pid->Er_limit) err_i = -pid->Er_limit;
+    }
+
+    /* ===== 抗积分饱和：输出饱和时停止积分 ===== */
+    if (obj->Out > pid->OutMin && obj->Out < pid->OutMax) {
+        pid->Error_calculus += err_i;
+    }
+    /* ========================================== */
+
+    if (pid->Er_weaken > 0 && pid->Er_weaken <= 1) {
+        pid->Error_calculus *=  pid->Er_weaken;
+    }
+    pid->Error_output = pid->ki * pid->Error_calculus ;
+
+    if (pid->Error_output > pid->ErMax &&  pid->ErMax != 0) {
+        pid->Error_output = pid->ErMax;
+    } else if (pid->Error_output < pid->ErMin &&  pid->ErMax != 0) {
+        pid->Error_output = pid->ErMin;
+    }
+
+    float derivative = pid->Error_now - pid->Error_pass;
+
+    /* ===== P 项单独限幅（可选）：避免 P 项瞬间把输出推满 ===== */
+    float p_term = pid->kp * pid->Error_now;
+    float p_max  = pid->OutMax * 0.8f;                     // P 贡献最多 80% 输出范围
+    if (p_term >  p_max) p_term =  p_max;
+    if (p_term < -p_max) p_term = -p_max;
+    /* ====================================================== */
+
+    obj->Out = p_term +
+               pid->Error_output +
+               pid->kd * derivative;
+
+    if (obj->Out > pid->OutMax) {
+        obj->Out = pid->OutMax;
+    } else if (obj->Out < pid->OutMin) {
+        obj->Out = pid->OutMin;
+    }
+
+    pid->Error_pass = pid->Error_now;
+    return obj->Out;
+}
+
 float PID_Calculate_debug(control_PID *pid, control_object *obj, float *debug_data){
     obj->Target = obj->Target; // Target 通常由外部赋值
 
@@ -181,7 +231,46 @@ float PID_Calculate_debug(control_PID *pid, control_object *obj, float *debug_da
     return obj->Out;
 }
 
+float PID_Calculate_Fast_debug(control_PID *pid, control_object *obj, float *debug_data){
+    pid->Error_now = obj->Target - obj->Actual;
 
+    float err_i = pid->Error_now;
+    if (pid->Er_limit > 0.0f) {
+        if (err_i > pid->Er_limit)  err_i = pid->Er_limit;
+        if (err_i < -pid->Er_limit) err_i = -pid->Er_limit;
+    }
+    pid->Error_calculus += err_i;
+    if (pid->Er_weaken > 0 && pid->Er_weaken <= 1) {
+        pid->Error_calculus *=  pid->Er_weaken;
+    }
+    pid->Error_output = pid->ki * pid->Error_calculus ;
+
+    if (pid->Error_output > pid->ErMax &&  pid->ErMax != 0) {
+        pid->Error_output = pid->ErMax;
+    } else if (pid->Error_output < pid->ErMin &&  pid->ErMax != 0) {
+        pid->Error_output = pid->ErMin;
+    }
+
+    float derivative = pid->Error_now - pid->Error_pass;
+
+    debug_data[0] = pid->kp * pid->Error_now;
+    debug_data[1] = pid->Error_output;
+    debug_data[2] = pid->kd * derivative;
+
+    obj->Out = debug_data[0] +
+               debug_data[1] +
+               debug_data[2];
+
+    if (obj->Out > pid->OutMax) {
+        obj->Out = pid->OutMax;
+    } else if (obj->Out < pid->OutMin) {
+        obj->Out = pid->OutMin;
+    }
+
+    pid->Error_pass = pid->Error_now;
+
+    return obj->Out;
+}
 
 float PID_Calculate_DerivativeOnMeasure(control_PID *pid, control_object *obj)
 {
