@@ -95,7 +95,7 @@ static void FOC_3_test_task(void* argument);
  *   sin_period:5.0 — 设置周期 (秒)
  *   sin_offset:1.0 — 设置直流偏置
  */
-static SineGen g_sin = {0.5f, 1.0f, 0.0f, 0.0f};
+static SineGen g_sin = {0.5f, 5.0f, 0.0f, 0.0f};
 static bool     g_sin_en = false;
 
 void Sin_Parse(const char *key, const char *val_str) {
@@ -123,7 +123,9 @@ void Sin_control() {
     if (!g_sin_en) return;
     float temp = SineGen_Calc(&g_sin);
     test_sin = temp;
-    FOC_3::instances[0]->set_location_target(test_sin);
+    if (g_sin_en) {
+        FOC_3::instances[1]->set_speed_target(test_sin);
+    }
 }
 
 
@@ -179,7 +181,9 @@ static void FOC_3_task(void* /*argument*/) {
     static control_PID m1_speed_pid, m1_loc_pid, m1_curq_pid, m1_curd_pid, m1_direct_pid;
     /* 初始化三环 PID 参数 */
     Control_PID_Init(&m1_speed_pid,   3000.0f, 200.0f, 0.0f, -32767.0f, 32767.0f, 20000.0f,20000.0f);
-    Control_PID_Init(&m1_loc_pid,     0.0012f, 0.0f, 0.0002f, -4.0f, 4.0f,1.0f, 15.0f);
+    // Control_PID_Init(&m1_loc_pid,     0.0012f, 0.0f, 0.0002f, -4.0f, 4.0f,1.0f, 15.0f);                     //精确稳健
+    Control_PID_Init(&m1_loc_pid,     0.004f, 0.0f, 0.001f, -4.0f, 4.0f,1.0f, 15.0f);     //响应速度
+
     Control_PID_Init(&m1_curq_pid,    1.0f, 0.04f, 0.0f, -32767.0f, 32767.0f, 250,20000);
     // lowpass_Filter curOutFilter = {0.1f,0.0f};
     // PID_EnableOutputFilter(&m1_curq_pid, lowpass_filter,&curOutFilter);
@@ -203,8 +207,9 @@ static void FOC_3_task(void* /*argument*/) {
     /* 创建 PID */
     static control_PID m2_speed_pid, m2_loc_pid, m2_curq_pid, m2_curd_pid, m2_direct_pid;
     /* 初始化三环 PID 参数 */
-    Control_PID_Init(&m2_speed_pid,   3000.0f, 200.0f, 0.0f, -32767.0f, 32767.0f, 20000.0f,2000.0f);
-    Control_PID_Init(&m2_loc_pid,     0.0004f, 0.0f, 0.0002f, -4.0f, 4.0f,1.0f, 15.0f);
+    Control_PID_Init(&m2_speed_pid,   20000.0f, 230.0f, 0.0f, -30000.0f, 30000.0f, 1000.0f,2000.0f);
+    // Control_PID_Init(&m2_loc_pid,     0.003f, 0.0f, 0.002f, -4.0f, 4.0f,1.0f, 15.0f);                     //齿槽补偿
+    Control_PID_Init(&m2_loc_pid,     0.0002f, 0.0f, 0.0001f, -4.0f, 4.0f,1.0f, 15.0f);
     Control_PID_Init(&m2_curq_pid,    1.0f, 0.04f, 0.0f, -32767.0f, 32767.0f, 250,20000);
     // lowpass_Filter curOutFilter = {0.1f,0.0f};
     // PID_EnableOutputFilter(&m2_curq_pid, lowpass_filter,&curOutFilter);
@@ -223,8 +228,8 @@ static void FOC_3_task(void* /*argument*/) {
     static FOC_3 motor2({&m2_enc,I_check_lowpass_M2, &htim2, &htim3, 11, 12.0f, 7.5f, 1.7f, 1, "motor1"});
     motor2.init(m2_pid);
 
-    motor2.set_location_zero(-4500);
-    motor2.set_location_limit(4000,-4000);
+    // motor2.set_location_zero(-4500);
+    // motor2.set_location_limit(4000,-4000);
 
     for (;;) {
         osSemaphoreAcquire(uart_sem, osWaitForever);
@@ -232,6 +237,12 @@ static void FOC_3_task(void* /*argument*/) {
         parse_kv(kv_buf, &key, &val);
         FOC_3_parse_keyValue(key, val);
         Sin_Parse(key, val);
+
+         int32_t dt =get_tim_dif(1);
+
+        Serial_SendVar("dt",dt);
+        Serial_SendVar("dt",get_tim_dif(2));
+
         // motor1.error_handle();
         // motor2.error_handle();
         // osDelay(10);
@@ -333,9 +344,9 @@ static void task_printf(void * /*argument*/) {
         // temp[5] = test_curdata[2];
 
 
-        Serial_JustFloat(temp,5);
+        // Serial_JustFloat(temp,5);
         // temp[0] = (float)out[1];
-        // Serial_JustFloat(out,6);
+        Serial_JustFloat(out,6);
         osDelay(1);
     }
 }

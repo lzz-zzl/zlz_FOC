@@ -77,7 +77,13 @@ float PID_Calculate(control_PID *pid, control_object *obj){
         if (err_i > pid->Er_limit)  err_i = pid->Er_limit;
         if (err_i < -pid->Er_limit) err_i = -pid->Er_limit;
     }
-    pid->Error_calculus += err_i;
+
+    /* ===== 抗积分饱和：输出饱和时停止积分 ===== */
+    if (obj->Out > pid->OutMin && obj->Out < pid->OutMax) {
+        pid->Error_calculus += err_i;
+    }
+    /* ========================================== */
+
     if (pid->Er_weaken > 0 && pid->Er_weaken <= 1) {
         pid->Error_calculus *=  pid->Er_weaken;
     }
@@ -96,7 +102,14 @@ float PID_Calculate(control_PID *pid, control_object *obj){
         derivative = pid->Derivative_filter(pid->Derivative_filter_para, derivative);
     }
 
-    obj->Out = pid->kp * pid->Error_now +
+    /* ===== P 项单独限幅（可选）：避免 P 项瞬间把输出推满 ===== */
+    float p_term = pid->kp * pid->Error_now;
+    float p_max  = pid->OutMax * 0.8f;                     // P 贡献最多 80% 输出范围
+    if (p_term >  p_max) p_term =  p_max;
+    if (p_term < -p_max) p_term = -p_max;
+    /* ====================================================== */
+
+    obj->Out = p_term +
                pid->Error_output +
                pid->kd * derivative;
 
