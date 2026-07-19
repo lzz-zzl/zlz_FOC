@@ -134,7 +134,7 @@ int16_t MT6701::ssi_read_angle() {
   */
 int16_t MT6701::ssi_read_angle_fast() {
     cs_assert();
-    // delay_us(2);
+    delay_us(2);
 
     SPI_TypeDef *spi = m_hspi->Instance;
 

@@ -372,7 +372,7 @@ static void CreateTasks() {
         { "OLED_Task",   &OLEDTaskFunc,    config::OLED_STACK_SIZE,   30 },
         // { "FOC_Task",    &FOCTaskFunc,     config::FOC_STACK_SIZE,    config::FOC_PRIORITY },
         { "task_printf", &task_printf,  256 * 4 , 42 },
-        // { "JY61P_Test",  &JY61PTestTask,   256 * 4,                  40 },
+        { "JY61P_Test",  &JY61PTestTask,   256 * 4,                  40 },
         { "FOC_3_task",    &FOC_3_task,     512*4,    45 },
     };
 
