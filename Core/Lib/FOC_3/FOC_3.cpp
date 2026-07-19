@@ -272,7 +272,7 @@ void FOC_3::current_pi_loop() {
         target += (float)m_cogging_table[m_elect_angle];
     m_current_q_obj.Target = target;
     m_current_q_obj.Actual = (float)m_i_q_q15;
-    m_uq = m_i_q_target +(int16_t)PID_Calculate_debug(m_current_q_pid, &m_current_q_obj,test_curdata) ;
+    m_uq = (int16_t)PID_Calculate_debug(m_current_q_pid, &m_current_q_obj,test_curdata) ;
 
     m_current_d_obj.Target = 0.0f;
     m_current_d_obj.Actual = (float)m_i_d_q15;
@@ -326,7 +326,9 @@ void FOC_3::direct_location_pid() {
 /* ========================================================================== */
 
 void FOC_3::period() {
+    tim_dif_start(2);
     m_location_origin = m_encoder->refresh_raw();
+    tim_dif_stop(2);
     int16_t m_location_temp = m_location_origin- m_rela_location_zero;
     if (m_location_temp > 8191) {
         m_location = m_location_temp - 16384;
