@@ -23,6 +23,7 @@ void App_Task(void *argument);
 void App_Task_Create(void);
 
     void Sin_control();
+  void  control_trace();
 
 #ifdef __cplusplus
 }

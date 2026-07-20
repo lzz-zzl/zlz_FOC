@@ -664,6 +664,10 @@ void FOC_3::parse_keyValue(const char *key, char *val_str)
             m->m_location_target = (int16_t)val;  /* 位置目标 (14-bit) */
             m->m_state = 4;
         }
+        else if (strcmp(key, "rale_pos") == 0) {
+            m->set_location_rale_target((int16_t)val);  /* 位置目标 (14-bit) */
+            m->m_state = 4;
+        }
         /* 调参 kp/ki/kd — 作用于选中的 PID */
         else if (strcmp(key, "kp") == 0) {
             control_PID *pid = nullptr;

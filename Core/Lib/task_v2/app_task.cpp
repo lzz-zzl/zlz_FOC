@@ -83,9 +83,31 @@ static void MT6701TaskFunc(void* argument);
 static void JY61PTestTask(void* argument);
 static void FOC_3_test_task(void* argument);
 
+
 // ====================================================================
 // 任务函数实现
 // ====================================================================
+
+int16_t temp[1];
+int16_t world_dir = 0;
+int16_t world_dir_target = 0;
+bool en_trace = false;
+
+void start_trace(int8_t EN) {
+    en_trace = EN;
+}
+void control_trace_init() {
+    world_dir_target = world_dir;
+}
+
+void control_trace() {
+    if (en_trace){
+        JY61P_GetAngleRaw(&temp[0],&temp[1],&world_dir);
+        int16_t diff_location = (world_dir_target - world_dir)/4;
+        FOC_3::instances[1]->set_location_rale_target(diff_location);
+    }
+}
+
 
 /* ======================== 正弦信号控制器命令解析 ======================== */
 /* 串口格式 (VOFA+ 键值对):  key:value
@@ -126,6 +148,9 @@ void Sin_Parse(const char *key, const char *val_str) {
     }
     else if (strcmp(key, "square_stop") == 0) {
         g_square_en = false;
+    }
+    else if (strcmp(key, "en_trace") == 0) {
+        start_trace((int8_t)val);
     }
 }
 
@@ -196,6 +221,9 @@ static void OLEDTaskFunc(void* /*argument*/) {
     }
 }
 
+
+
+
 static void FOC_3_task(void* /*argument*/) {
 
     Serial_Init();
@@ -226,7 +254,7 @@ static void FOC_3_task(void* /*argument*/) {
     motor1.init(m1_pid);
     motor1.set_location_zero(5700);
     motor1.set_location_limit(2000,-4000);
-    motor1.set_cogging_enable(0);
+    motor1.set_cogging_enable(false);
 
     //电机2
     /* 创建 PID */
@@ -255,7 +283,7 @@ static void FOC_3_task(void* /*argument*/) {
 
     // motor2.set_location_zero(-4500);
     // motor2.set_location_limit(4000,-4000);
-
+    control_trace_init();
     for (;;) {
         osSemaphoreAcquire(uart_sem, osWaitForever);
         char *key, *val;
@@ -277,7 +305,6 @@ static void FOC_3_task(void* /*argument*/) {
         // osDelay(10);
     }
 }
-
 
 
 
@@ -373,14 +400,14 @@ static void task_printf(void * /*argument*/) {
         }else if (FOC_3::pid_debug == 3) {
         FOC_3::showPID_location(temp);
         }
-        temp[4] = test_sin;
+        temp[4] = world_dir;
         // temp[4] = FOC_3::instances[0]->get_iq_target();
         // temp[5] = test_curdata[2];
 
 
-        // Serial_JustFloat(temp,5);
+        Serial_JustFloat(temp,5);
         // temp[0] = (float)out[1];
-        Serial_JustFloat(out,6);
+        // Serial_JustFloat(out,6);
         osDelay(5);
     }
 }

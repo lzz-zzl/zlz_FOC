@@ -101,6 +101,7 @@ void HAL_ADC_ConvHalfCpltCallback(ADC_HandleTypeDef* hadc)
     adc_count++;
     if (adc_count >= 38) {
       Sin_control();
+      control_trace();
       adc_dma_count++;
       adc_count = 0;
     }
