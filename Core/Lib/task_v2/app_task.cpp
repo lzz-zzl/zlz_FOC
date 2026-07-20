@@ -95,17 +95,20 @@ static void FOC_3_test_task(void* argument);
  *   sin_period:5.0 — 设置周期 (秒)
  *   sin_offset:1.0 — 设置直流偏置
  */
-static SineGen g_sin = {0.5f, 5.0f, 0.0f, 0.0f};
-static bool     g_sin_en = false;
+static SineGen   g_sin    = {0.5f, 5.0f, 0.0f, 0.0f};
+static bool      g_sin_en    = false;
+static bool      g_square_en = false;
 
 void Sin_Parse(const char *key, const char *val_str) {
     float val = val_str ? atof(val_str) : 0.0f;
 
     if (strcmp(key, "sin_start") == 0) {
         g_sin_en = true;
+        g_square_en = false;
     }
     else if (strcmp(key, "sin_stop") == 0) {
         g_sin_en = false;
+        g_square_en = false;
     }
     else if (strcmp(key, "sin_amp") == 0) {
         g_sin.amplitude = val;
@@ -116,16 +119,37 @@ void Sin_Parse(const char *key, const char *val_str) {
     else if (strcmp(key, "sin_offset") == 0) {
         g_sin.offset = val;
     }
+    /* 方波 — 共用 g_sin 的幅度/周期/偏置/相位，占空比固定 0.5 */
+    else if (strcmp(key, "square_start") == 0) {
+        g_square_en = true;
+        g_sin_en = false;
+    }
+    else if (strcmp(key, "square_stop") == 0) {
+        g_square_en = false;
+    }
 }
 
 float test_sin;
 void Sin_control() {
-    if (!g_sin_en) return;
-    float temp = SineGen_Calc(&g_sin);
-    test_sin = temp;
+    const float dt = 0.005f;
+    float temp;
+
     if (g_sin_en) {
-        FOC_3::instances[1]->set_speed_target(test_sin);
+        temp = SineGen_Calc(&g_sin);
+    } else if (g_square_en) {
+        /* 直接基于 g_sin 的参数内联计算方波，相位共用 */
+        if (g_sin.period <= 0.0001f) return;
+        float norm = g_sin.phase / (2.0f * 3.14159265f);
+        temp = (norm < 0.5f) ? (g_sin.amplitude + g_sin.offset)
+                             : (-g_sin.amplitude + g_sin.offset);
+        g_sin.phase += (2.0f * 3.14159265f / g_sin.period) * dt;
+        if (g_sin.phase >= 2.0f * 3.14159265f) g_sin.phase -= 2.0f * 3.14159265f;
+    } else {
+        return;
     }
+
+    test_sin = temp;
+    FOC_3::instances[0]->set_speed_target(test_sin);
 }
 
 
@@ -202,6 +226,7 @@ static void FOC_3_task(void* /*argument*/) {
     motor1.init(m1_pid);
     motor1.set_location_zero(5700);
     motor1.set_location_limit(2000,-4000);
+    motor1.set_cogging_enable(0);
 
     //电机2
     /* 创建 PID */
@@ -252,6 +277,11 @@ static void FOC_3_task(void* /*argument*/) {
         // osDelay(10);
     }
 }
+
+
+
+
+
 
 
 static void MT6701TaskFunc(void* /*argument*/) {
@@ -348,10 +378,10 @@ static void task_printf(void * /*argument*/) {
         // temp[5] = test_curdata[2];
 
 
-        Serial_JustFloat(temp,5);
+        // Serial_JustFloat(temp,5);
         // temp[0] = (float)out[1];
-        // Serial_JustFloat(out,6);
-        osDelay(1);
+        Serial_JustFloat(out,6);
+        osDelay(5);
     }
 }
 

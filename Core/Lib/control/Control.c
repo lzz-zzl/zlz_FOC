@@ -420,3 +420,35 @@ float SineGen_Calc(SineGen *sg) {
     return value;
 }
 
+/* ======================== 方波信号发生器 ======================== */
+/* 同样在 200Hz (5ms) 下调用，内部相位按 dt = 0.005s 累加      */
+
+void SquareGen_Init(SquareGen *sg, float amplitude, float period, float offset, float duty) {
+    sg->amplitude = amplitude;
+    sg->period    = period;
+    sg->phase     = 0.0f;
+    sg->offset    = offset;
+    sg->duty      = (duty > 1.0f) ? 1.0f : (duty < 0.0f) ? 0.0f : duty; /* 限幅到 [0,1] */
+}
+
+float SquareGen_Calc(SquareGen *sg) {
+    const float dt = 0.005f;                        /* 200Hz 调用周期 */
+    if (sg->period <= 0.0001f) return sg->offset;   /* 防除零 → NaN */
+    if (sg->duty <= 0.0f)       return -sg->amplitude + sg->offset; /* 全低 */
+    if (sg->duty >= 1.0f)       return  sg->amplitude + sg->offset; /* 全高 */
+
+    float omega = 2.0f * 3.14159265f / sg->period; /* 角频率 */
+
+    /* 将相位归一化到 [0, 1) 区间，按占空比输出高低电平 */
+    float norm = sg->phase / (2.0f * 3.14159265f);
+    float value = (norm < sg->duty) ?
+                  ( sg->amplitude + sg->offset) :
+                  (-sg->amplitude + sg->offset);
+
+    sg->phase += omega * dt;
+    if (sg->phase >= 2.0f * 3.14159265f) {
+        sg->phase -= 2.0f * 3.14159265f;
+    }
+    return value;
+}
+

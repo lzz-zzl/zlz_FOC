@@ -34,7 +34,7 @@
 
 /* 粗略延时: 168MHz 下约 1 µs (根据实际编译优化可能需要调整) */
 static inline void delay_us(uint32_t us) {
-    for (uint32_t i = 0; i < us * 2; i++) {
+    for (uint32_t i = 0; i < us * 20; i++) {
         __NOP();
     }
 }

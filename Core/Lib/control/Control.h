@@ -19,6 +19,18 @@ typedef struct {
 void SineGen_Init(SineGen *sg, float amplitude, float period, float offset);
 float SineGen_Calc(SineGen *sg);
 
+/* 方波信号发生器 */
+typedef struct {
+    float amplitude;    /**< 振幅 */
+    float period;       /**< 周期 (秒) */
+    float phase;        /**< 当前相位 (弧度) */
+    float offset;       /**< 直流偏置 */
+    float duty;         /**< 占空比 (0.0 ~ 1.0, 默认 0.5) */
+} SquareGen;
+
+void SquareGen_Init(SquareGen *sg, float amplitude, float period, float offset, float duty);
+float SquareGen_Calc(SquareGen *sg);
+
 
 typedef struct {
     float alpha;

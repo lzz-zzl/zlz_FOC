@@ -68,6 +68,7 @@ public:
     void      set_location_limit(int16_t max , int16_t min) { m_max_location = max>=min?max:min; m_min_location = max>=min?min:max; }
     int16_t  get_location_target() const    { return m_location_target; }
     int16_t  get_encode_val()   {return this->m_encoder->get_angle_14bit();}
+    void set_cogging_enable(bool enable) { m_cogging_enable = ((int)enable == 1);}
 
     void     set_uq(int16_t v) { m_uq = v; }
     void     set_ud(int16_t v) { m_ud = v; }
