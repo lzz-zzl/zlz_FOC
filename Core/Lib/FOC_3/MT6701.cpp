@@ -244,7 +244,7 @@ int16_t MT6701::get_angle_14bit() const {
 /* ========================================================================== */
 
 float MT6701::calc_speed_rpm() {
-    uint32_t dt_ms = 4;
+    uint32_t dt_ms = 2;
     // if (m_last_tick == 0 || dt_ms == 0) {
     //     m_last_tick = now;
     //     m_last_angle_14bit = m_angle_14bit;

@@ -350,7 +350,7 @@ void FOC_3::period() {
 
     m_per_count++;
 
-    if (m_per_count % 60 == 0) {
+    if (m_per_count % 30 == 0) {
          if (m_state == 4 || m_state == 121) {
              location_target_pid();
          }

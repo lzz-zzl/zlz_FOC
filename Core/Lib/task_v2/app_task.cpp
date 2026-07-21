@@ -179,7 +179,7 @@ void Sin_control() {
     }
 
     test_sin = temp;
-    FOC_3::instances[1]->set_location_target(test_sin);
+    FOC_3::instances[0]->set_speed_target(test_sin);
 }
 
 
@@ -226,9 +226,6 @@ static void OLEDTaskFunc(void* /*argument*/) {
     }
 }
 
-
-
-
 static void FOC_3_task(void* /*argument*/) {
 
     Serial_Init();
@@ -238,6 +235,7 @@ static void FOC_3_task(void* /*argument*/) {
     static control_PID m1_speed_pid, m1_loc_pid, m1_curq_pid, m1_curd_pid, m1_direct_pid;
     /* 初始化三环 PID 参数 */
     Control_PID_Init(&m1_speed_pid,   3000.0f, 200.0f, 0.0f, -32767.0f, 32767.0f, 20000.0f,20000.0f);
+    m1_speed_pid.Er_weaken = 0.98;
     // Control_PID_Init(&m1_loc_pid,     0.0012f, 0.0f, 0.0002f, -4.0f, 4.0f,1.0f, 15.0f);                     //精确稳健
     Control_PID_Init(&m1_loc_pid,     0.004f, 0.0f, 0.001f, -1.0f, 1.0f,1.0f, 15.0f);     //响应速度
 
@@ -341,7 +339,7 @@ static void MT6701TaskFunc(void* /*argument*/) {
 
         Serial_JustFloat(&deg,1);
 
-        osDelay(10);
+        osDelay(1);
     }
 }
 
@@ -413,9 +411,9 @@ static void task_printf(void * /*argument*/) {
         FOC_3::showPID_location(temp);
         }
         temp[4] = world_dir;
-        temp[3] = world_location_target;
+        // temp[3] = world_location_target;
         // temp[4] = FOC_3::instances[0]->get_iq_target();
-        // temp[5] = test_curdata[2];
+        temp[3] = test_sin;
 
 
         Serial_JustFloat(temp,5);
