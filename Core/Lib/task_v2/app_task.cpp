@@ -259,7 +259,7 @@ static void FOC_3_task(void* /*argument*/) {
     motor1.init(m1_pid);
     motor1.set_location_zero(5700);
     motor1.set_location_limit(2000,-4000);
-    motor1.set_cogging_enable(false);
+    // motor1.set_cogging_enable(false);
 
     //电机2
     /* 创建 PID */
