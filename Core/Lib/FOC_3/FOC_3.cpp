@@ -110,7 +110,7 @@ void FOC_3::init(const PIDCtrl &pid) {
     cogging_load_from_flash();
     m_cogging_enable = true;
 
-    HAL_TIM_Base_Start_IT(m_htim_pwm);
+    HAL_TIM_Base_Start(m_htim_pwm);
     HAL_TIM_Base_Start(m_htim_ctrl);        /* TIM5 计数但不进中断 */
 }
 
@@ -544,47 +544,108 @@ void FOC_3::cogging_learn_stop() {
 #define COGGING_SLOT_SIZE    0x1000      /* 每个电机槽大小 (4KB, 足够 magic+1440×int16) */
 
 void FOC_3::cogging_save_to_flash() {
-    HAL_StatusTypeDef status;
-    FLASH_EraseInitTypeDef erase = {0};
-    uint32_t sector_error = 0;
+    volatile uint32_t timeout;
+    uint32_t sr_before;
 
-    HAL_FLASH_Unlock();
+    /* ===== 诊断：关中断之前就输出 ===== */
+    Serial_SendString("cogging: stop tim\r\n");
+    HAL_TIM_Base_Stop(&htim1);
 
-    /* 擦除 Sector 7 */
-    erase.TypeErase     = FLASH_TYPEERASE_SECTORS;
-    erase.Sector        = FLASH_SECTOR_7;
-    erase.NbSectors     = 1;
-    erase.VoltageRange  = FLASH_VOLTAGE_RANGE_3;
-    status = HAL_FLASHEx_Erase(&erase, &sector_error);
-    if (status != HAL_OK) {
-        HAL_FLASH_Lock();
-        Serial_SendString("cogging erase fail\r\n");
+    Serial_SendString("cogging: diable irq + clear sr\r\n");
+    /* 关中断：Flash 擦写期间总线 stall */
+    __disable_irq();
+
+    sr_before = FLASH->SR;
+    FLASH->SR = sr_before;               /* 写1清除所有标志 */
+
+    /* 解锁 */
+    FLASH->KEYR = 0x45670123;
+    FLASH->KEYR = 0xCDEF89AB;
+    if (FLASH->CR & FLASH_CR_LOCK) {
+        /* 无法输出了！直接恢复后输出 */
+        FLASH->CR |= FLASH_CR_LOCK;
+        __enable_irq();
+        Serial_SendString("cogging unlock fail\r\n");
+        HAL_TIM_Base_Start(&htim1);
         return;
     }
 
-    /* 一次擦除，写入所有已注册电机的表 */
-    for (uint8_t id = 0; id < 4; id++) {
+    /* ===== 擦除 Sector 7 ===== */
+    FLASH->CR &= ~FLASH_CR_PSIZE;
+    FLASH->CR |= (2UL << 8);              /* PSIZE=2: 32-bit word erase */
+    FLASH->CR |= FLASH_CR_SER;
+    FLASH->CR &= ~FLASH_CR_SNB;
+    FLASH->CR |= (7UL << 3);              /* SNB=7 = Sector 7 */
+    FLASH->CR |= FLASH_CR_STRT;
+
+    timeout = 5000000;
+    while (FLASH->SR & FLASH_SR_BSY) {
+        timeout--;
+        if (timeout == 0) break;
+    }
+
+    FLASH->SR = FLASH->SR;                /* 清标志 */
+    FLASH->CR &= ~(FLASH_CR_SER | FLASH_CR_SNB);
+
+    /* ===== 暂时恢复中断，输出诊断 ===== */
+    __enable_irq();
+
+    if (timeout == 0) {
+        Serial_SendString("cogging: erase timeout\r\n");
+        goto err_out;
+    }
+    if (FLASH->SR & FLASH_SR_WRPERR) {
+        Serial_SendString("cogging: write protected!\r\n");
+        goto err_out;
+    }
+
+    // Serial_SendString("cogging: erase ok, program\r\n");
+    __disable_irq();
+
+    /* ===== 写入 Magic + 表 ===== */
+    for (uint8_t id = 0; id < 2; id++) {
         if (!instances[id]) continue;
         uint32_t addr = COGGING_FLASH_ADDR + id * COGGING_SLOT_SIZE;
 
-        HAL_FLASH_Program(FLASH_TYPEPROGRAM_HALFWORD, addr, (uint64_t)COGGING_FLASH_MAGIC);
-        addr += 2;
+        for (uint16_t i = 0; i <= TABLE_SIZE; i++) {
+            uint16_t data;
+            if (i == 0)
+                data = (uint16_t)COGGING_FLASH_MAGIC;
+            else
+                data = (uint16_t)instances[id]->m_cogging_table[i - 1];
 
-        for (uint16_t i = 0; i < TABLE_SIZE; i++) {
-            HAL_FLASH_Program(FLASH_TYPEPROGRAM_HALFWORD, addr,
-                              (uint64_t)(uint16_t)instances[id]->m_cogging_table[i]);
+            FLASH->CR &= ~FLASH_CR_PSIZE;
+            FLASH->CR |= (1UL << 8);             /* PSIZE=1: half-word */
+            FLASH->CR |= FLASH_CR_PG;
+
+            *(volatile uint16_t *)addr = data;
+
+            timeout = 500000;
+            while (FLASH->SR & FLASH_SR_BSY) {
+                timeout--;
+                if (timeout == 0) break;
+            }
+            FLASH->SR = FLASH->SR;
+            FLASH->CR &= ~FLASH_CR_PG;
+
+            if (timeout == 0) {
+                __enable_irq();
+                Serial_Printf("cogging: pg timeout at i=%d\r\n", i);
+                goto err_out;
+            }
             addr += 2;
         }
     }
 
-    HAL_FLASH_Lock();
-
-    /* 写完 Flash 后使 D-Cache 失效，确保后续读回的是真实 Flash 内容 */
-#if defined(__DCACHE_PRESENT) && (__DCACHE_PRESENT == 1)
-    SCB_InvalidateDCache();
-#endif
-
+    FLASH->CR |= FLASH_CR_LOCK;
+    __enable_irq();
     Serial_SendString("cogging saved\r\n");
+    HAL_TIM_Base_Start(&htim1);
+    return;
+
+err_out:
+    FLASH->CR |= FLASH_CR_LOCK;
+    HAL_TIM_Base_Start(&htim1);
 }
 
 void FOC_3::cogging_load_from_flash() {
@@ -608,6 +669,7 @@ void FOC_3::cogging_load_from_flash() {
     }
 
     Serial_SendString("cogging loaded\r\n");
+
 }
 
 /* ========================================================================== */

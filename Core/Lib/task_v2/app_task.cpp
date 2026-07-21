@@ -267,7 +267,7 @@ static void FOC_3_task(void* /*argument*/) {
     /* 初始化三环 PID 参数 */
     Control_PID_Init(&m2_speed_pid,   20000.0f, 230.0f, 0.0f, -30000.0f, 30000.0f, 1000.0f,2000.0f);
     // Control_PID_Init(&m2_loc_pid,     0.003f, 0.0f, 0.002f, -4.0f, 4.0f,1.0f, 15.0f);                     //齿槽补偿
-    Control_PID_Init(&m2_loc_pid,     0.002f, 0.0f, 0.0085f, -4.0f, 4.0f,1.0f, 15.0f);
+    Control_PID_Init(&m2_loc_pid,     0.001f, 0.0f, 0.0085f, -4.0f, 4.0f,1.0f, 15.0f);
     Control_PID_Init(&m2_curq_pid,    1.0f, 0.04f, 0.0f, -32767.0f, 32767.0f, 250,20000);
     // lowpass_Filter curOutFilter = {0.1f,0.0f};
     // PID_EnableOutputFilter(&m2_curq_pid, lowpass_filter,&curOutFilter);
