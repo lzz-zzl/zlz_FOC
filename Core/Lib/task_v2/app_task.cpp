@@ -95,16 +95,21 @@ bool en_trace = false;
 
 void start_trace(int8_t EN) {
     en_trace = EN;
+    world_dir_target = world_dir;
 }
 void control_trace_init() {
     world_dir_target = world_dir;
 }
-
+int16_t world_location_target;
 void control_trace() {
     if (en_trace){
+        FOC_3*  m = FOC_3::instances[1];
         JY61P_GetAngleRaw(&temp[0],&temp[1],&world_dir);
         int16_t diff_location = (world_dir_target - world_dir)/4;
-        FOC_3::instances[1]->set_location_rale_target(diff_location);
+        world_location_target = diff_location + m->get_location();
+        if (world_location_target>8191){world_location_target -= 16384;}
+        else if (world_location_target<-8191){world_location_target += 16384;}
+        m->set_location_target(world_location_target);
     }
 }
 
@@ -174,7 +179,7 @@ void Sin_control() {
     }
 
     test_sin = temp;
-    FOC_3::instances[0]->set_speed_target(test_sin);
+    FOC_3::instances[1]->set_location_target(test_sin);
 }
 
 
@@ -262,7 +267,7 @@ static void FOC_3_task(void* /*argument*/) {
     /* 初始化三环 PID 参数 */
     Control_PID_Init(&m2_speed_pid,   20000.0f, 230.0f, 0.0f, -30000.0f, 30000.0f, 1000.0f,2000.0f);
     // Control_PID_Init(&m2_loc_pid,     0.003f, 0.0f, 0.002f, -4.0f, 4.0f,1.0f, 15.0f);                     //齿槽补偿
-    Control_PID_Init(&m2_loc_pid,     0.0002f, 0.0f, 0.0001f, -4.0f, 4.0f,1.0f, 15.0f);
+    Control_PID_Init(&m2_loc_pid,     0.002f, 0.0f, 0.0085f, -4.0f, 4.0f,1.0f, 15.0f);
     Control_PID_Init(&m2_curq_pid,    1.0f, 0.04f, 0.0f, -32767.0f, 32767.0f, 250,20000);
     // lowpass_Filter curOutFilter = {0.1f,0.0f};
     // PID_EnableOutputFilter(&m2_curq_pid, lowpass_filter,&curOutFilter);
@@ -293,12 +298,12 @@ static void FOC_3_task(void* /*argument*/) {
 
          int32_t dt =get_tim_dif(1);
 
-        Serial_Printf("4: %d\n",get_tim_dif(4));
-        Serial_Printf("3: %d\n",get_tim_dif(3));
-        Serial_Printf("2: %d\n",get_tim_dif(2));
-        Serial_Printf("5: %d\n",get_tim_dif(5));
-        Serial_Printf("1: %d\n",dt);
-        Serial_Printf("0: %d\n",get_tim_dif(0));
+        // Serial_Printf("4: %d\n",get_tim_dif(4));
+        // Serial_Printf("3: %d\n",get_tim_dif(3));
+        // Serial_Printf("2: %d\n",get_tim_dif(2));
+        // Serial_Printf("5: %d\n",get_tim_dif(5));
+        // Serial_Printf("1: %d\n",dt);
+        // Serial_Printf("0: %d\n",get_tim_dif(0));
 
         // motor1.error_handle();
         // motor2.error_handle();
@@ -354,7 +359,7 @@ static void JY61PTestTask(void* /*argument*/) {
 
 
         /* VOFA+ justfloat 协议: gx gy gz roll pitch yaw */
-        Serial_JustFloat(out, 6);
+        Serial_JustFloat(out, 3);
 
         // OLED_ShowSignedNum(4,1,pitch,6);
         osDelay(10);
@@ -401,6 +406,7 @@ static void task_printf(void * /*argument*/) {
         FOC_3::showPID_location(temp);
         }
         temp[4] = world_dir;
+        temp[3] = world_location_target;
         // temp[4] = FOC_3::instances[0]->get_iq_target();
         // temp[5] = test_curdata[2];
 
@@ -428,9 +434,9 @@ static void CreateTasks() {
         // { "SerialTask",  &SerialTaskFunc,  config::SERIAL_STACK_SIZE, config::SERIAL_PRIORITY },
         { "OLED_Task",   &OLEDTaskFunc,    config::OLED_STACK_SIZE,   30 },
         // { "FOC_Task",    &FOCTaskFunc,     config::FOC_STACK_SIZE,    config::FOC_PRIORITY },
-        { "task_printf", &task_printf,  256 * 4 , 42 },
+        { "task_printf", &task_printf,  256 * 4 , 45 },
         { "JY61P_Test",  &JY61PTestTask,   256 * 4,                  40 },
-        { "FOC_3_task",    &FOC_3_task,     512*4,    45 },
+        { "FOC_3_task",    &FOC_3_task,     512*4,    42 },
     };
 
     for (const auto& t : tasks) {

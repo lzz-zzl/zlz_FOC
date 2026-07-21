@@ -301,7 +301,7 @@ void FOC_3::location_target_pid() {
     m_location_obj.Target = (float)(m_location + pos_err);
     m_location_obj.Actual = (float)m_location;
 
-    m_speed_target = PID_Calculate_Fast(m_location_pid, &m_location_obj);
+    m_speed_target = PID_Calculate_DerivativeOnMeasure(m_location_pid, &m_location_obj);
 
     if (m_location == m_location_target) {
         m_location_target_state = 1;
