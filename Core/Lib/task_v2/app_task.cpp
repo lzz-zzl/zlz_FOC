@@ -239,7 +239,7 @@ static void FOC_3_task(void* /*argument*/) {
     /* 初始化三环 PID 参数 */
     Control_PID_Init(&m1_speed_pid,   3000.0f, 200.0f, 0.0f, -32767.0f, 32767.0f, 20000.0f,20000.0f);
     // Control_PID_Init(&m1_loc_pid,     0.0012f, 0.0f, 0.0002f, -4.0f, 4.0f,1.0f, 15.0f);                     //精确稳健
-    Control_PID_Init(&m1_loc_pid,     0.004f, 0.0f, 0.001f, -4.0f, 4.0f,1.0f, 15.0f);     //响应速度
+    Control_PID_Init(&m1_loc_pid,     0.004f, 0.0f, 0.001f, -1.0f, 1.0f,1.0f, 15.0f);     //响应速度
 
     Control_PID_Init(&m1_curq_pid,    1.0f, 0.04f, 0.0f, -32767.0f, 32767.0f, 250,20000);
     // lowpass_Filter curOutFilter = {0.1f,0.0f};
@@ -291,8 +291,15 @@ static void FOC_3_task(void* /*argument*/) {
     control_trace_init();
     for (;;) {
         osSemaphoreAcquire(uart_sem, osWaitForever);
+        /* 关中断复制 kv_buf，防止 ISR 在 parse_kv 期间覆写 */
+        char local_kv[64];
+        uint32_t primask = __get_PRIMASK();
+        __disable_irq();
+        strcpy(local_kv, kv_buf);
+        __set_PRIMASK(primask);
+
         char *key, *val;
-        parse_kv(kv_buf, &key, &val);
+        parse_kv(local_kv, &key, &val);
         FOC_3_parse_keyValue(key, val);
         Sin_Parse(key, val);
 
@@ -303,7 +310,7 @@ static void FOC_3_task(void* /*argument*/) {
         // Serial_Printf("2: %d\n",get_tim_dif(2));
         // Serial_Printf("5: %d\n",get_tim_dif(5));
         // Serial_Printf("1: %d\n",dt);
-        // Serial_Printf("0: %d\n",get_tim_dif(0));
+        Serial_Printf("0: %d\n",get_tim_dif(0));
 
         // motor1.error_handle();
         // motor2.error_handle();
@@ -434,9 +441,9 @@ static void CreateTasks() {
         // { "SerialTask",  &SerialTaskFunc,  config::SERIAL_STACK_SIZE, config::SERIAL_PRIORITY },
         { "OLED_Task",   &OLEDTaskFunc,    config::OLED_STACK_SIZE,   30 },
         // { "FOC_Task",    &FOCTaskFunc,     config::FOC_STACK_SIZE,    config::FOC_PRIORITY },
-        { "task_printf", &task_printf,  256 * 4 , 45 },
+        { "task_printf", &task_printf,  256 * 4 , 42 },
         { "JY61P_Test",  &JY61PTestTask,   256 * 4,                  40 },
-        { "FOC_3_task",    &FOC_3_task,     512*4,    42 },
+        { "FOC_3_task",    &FOC_3_task,     512*4,    45 },
     };
 
     for (const auto& t : tasks) {

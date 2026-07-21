@@ -42,7 +42,7 @@ uint8_t Serial_RxFlag2;
 uint8_t temp_rxdata6[11];
 
 /* USART1 DMA+IDLE 接收缓冲 */
-#define UART1_RX_BUF_SIZE  64
+#define UART1_RX_BUF_SIZE  256
 static uint8_t uart1_rx_buf[UART1_RX_BUF_SIZE];
 
 /* USART6 DMA+IDLE 接收缓冲 (JY61P 陀螺仪) */
@@ -66,18 +66,20 @@ void Serial_Init(void)
 #define TX_CHUNK_MAX    256       // 单次 DMA 最大长度
 
 static uint8_t  tx_ring[TX_RING_SIZE];    // 环形缓冲区
-static uint16_t tx_head = 0;              // 写入位置 (生产者)
-static uint16_t tx_tail = 0;              // 读取位置 (消费者)
+static volatile uint16_t tx_head = 0;     // 写入位置 (生产者)
+static volatile uint16_t tx_tail = 0;     // 读取位置 (消费者)
 static volatile uint8_t tx_dma_busy = 0;  // DMA 正在发送
 static uint8_t  tx_dma_buf[TX_CHUNK_MAX]; // DMA 连续缓冲区
 
 /* 启动 DMA 发送 (从环形缓冲区搬数据到 DMA 缓冲区再发送) */
 static void tx_dma_start(void)
 {
-    /* 临界区: 禁止中断, 防止 tx_dma_busy 在任务和 ISR 间竞态 */
+    if (tx_dma_busy) return;    /* 快速路径: DMA 正在忙，等待完成回调 */
+
     uint32_t primask = __get_PRIMASK();
     __disable_irq();
 
+    /* 关中断后再确认一次 — 防止 ISR 在刚那条 if 之后抢占了 */
     if (tx_dma_busy) {
         __set_PRIMASK(primask);
         return;
@@ -94,17 +96,24 @@ static void tx_dma_start(void)
     if (avail > TX_CHUNK_MAX) avail = TX_CHUNK_MAX;
 
     memcpy(tx_dma_buf, &tx_ring[tx_tail], avail);
+    /* 先推进尾指针！假如 DMA 瞬间完成，回调中 tx_tail 已经前进，
+       不会重复复制同一块数据到 tx_dma_buf (否则会覆盖正在 DMA 的数据) */
     tx_tail = (tx_tail + avail) % TX_RING_SIZE;
-
     tx_dma_busy = 1;
-    __set_PRIMASK(primask);   /* 恢复中断 — HAL_UART_Transmit_DMA 会在内部开中断 */
+    __set_PRIMASK(primask);   /* 恢复中断 */
 
-    HAL_UART_Transmit_DMA(&huart1, tx_dma_buf, avail);
+    if (HAL_UART_Transmit_DMA(&huart1, tx_dma_buf, avail) != HAL_OK) {
+        /* HAL 失败极罕见 (UART 未就绪等) — 释放锁，数据已经 advance 了，回不去了 */
+        tx_dma_busy = 0;
+    }
 }
 
-/* 向环形缓冲区写一个字节 */
+/* 向环形缓冲区写一个字节 (多任务安全) */
 static void tx_ring_put(uint8_t c)
 {
+    uint32_t primask = __get_PRIMASK();
+    __disable_irq();
+
     uint16_t next = (tx_head + 1) % TX_RING_SIZE;
     if (next == tx_tail) {
         /* 缓冲区满 → 丢弃最旧的一个字节 */
@@ -112,6 +121,8 @@ static void tx_ring_put(uint8_t c)
     }
     tx_ring[tx_head] = c;
     tx_head = next;
+
+    __set_PRIMASK(primask);
 }
 
 void Serial_SendByte(uint8_t Byte)
@@ -138,12 +149,19 @@ void Serial_SendArray(uint8_t *Array, uint16_t Length)
 
 /**
   * @brief DMA 发送完成回调 — 发送环形缓冲区中的下一块数据.
+  *
+  * HAL 的 UART_DMATransmitCplt 会在 DMA 完成后使能 UART_IT_TC，
+  * 导致本回调被 DMA ISR 和 UART ISR 各调用一次。我们在入口处直接
+  * 关掉 TCIE 来阻止冗余的 UART TC 调用。
   */
 void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart)
 {
     if (huart->Instance == USART1) {
+        /* 关掉 UART TC 中断 — HAL 刚在 UART_DMATransmitCplt 里开了它 */
+        huart1.Instance->CR1 &= ~USART_CR1_TCIE;
+
         tx_dma_busy = 0;
-        tx_dma_start();  /* 继续发送下一块 */
+        tx_dma_start();  /* 继续发送下一块 (如果有) */
     }
 }
 
@@ -374,9 +392,8 @@ void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size)
 
 
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
-	/* USART1 由 DMA+IDLE 接管, 此处仅重启 DMA(当缓冲收满时) */
+	/* USART1: RxEventCallback 已处理数据并重启了 DMA, 这里不做任何事 */
 	if (huart->Instance == USART1) {
-		HAL_UARTEx_ReceiveToIdle_DMA(&huart1, uart1_rx_buf, UART1_RX_BUF_SIZE);
 		return;
 	}
 
@@ -433,7 +450,14 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
   */
 void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart)
 {
-	if (huart->Instance == USART6) {
+	if (huart->Instance == USART1) {
+		/* 清除 ORE/NE/FE/PE 错误标志并重启 RX DMA */
+		volatile uint8_t tmp = huart1.Instance->DR;  (void)tmp;
+		__HAL_UART_CLEAR_FLAG(&huart1, UART_FLAG_ORE | UART_FLAG_NE | UART_FLAG_FE | UART_FLAG_PE);
+		HAL_UARTEx_ReceiveToIdle_DMA(&huart1, uart1_rx_buf, UART1_RX_BUF_SIZE);
+		__HAL_UART_CLEAR_IDLEFLAG(&huart1);
+	}
+	else if (huart->Instance == USART6) {
 		/* 清除错误标志 (ORE/NE/FE/PE) — HAL 已清部分，再读一次 DR 彻底清 ORE */
 		volatile uint8_t tmp = huart6.Instance->DR;  (void)tmp;
 		__HAL_UART_CLEAR_FLAG(&huart6, UART_FLAG_ORE | UART_FLAG_NE | UART_FLAG_FE | UART_FLAG_PE);
