@@ -259,30 +259,30 @@ static void FOC_3_task(void* /*argument*/) {
     motor1.set_location_limit(2000,-4000);
     // motor1.set_cogging_enable(false);
 
-    //电机2
-    /* 创建 PID */
-    static control_PID m2_speed_pid, m2_loc_pid, m2_curq_pid, m2_curd_pid, m2_direct_pid;
-    /* 初始化三环 PID 参数 */
-    Control_PID_Init(&m2_speed_pid,   20000.0f, 230.0f, 0.0f, -30000.0f, 30000.0f, 1000.0f,2000.0f);
-    // Control_PID_Init(&m2_loc_pid,     0.003f, 0.0f, 0.002f, -4.0f, 4.0f,1.0f, 15.0f);                     //齿槽补偿
-    Control_PID_Init(&m2_loc_pid,     0.001f, 0.0f, 0.0085f, -4.0f, 4.0f,1.0f, 15.0f);
-    Control_PID_Init(&m2_curq_pid,    1.0f, 0.04f, 0.0f, -32767.0f, 32767.0f, 250,20000);
-    // lowpass_Filter curOutFilter = {0.1f,0.0f};
-    // PID_EnableOutputFilter(&m2_curq_pid, lowpass_filter,&curOutFilter);
-
-    Control_PID_Init(&m2_curd_pid,    1.0f, 0.04f, 0.0f, -32767.0f, 32767.0f, 5000,5000);
-    Control_PID_Init(&m2_direct_pid,  15.0f, 0.15f, 50.0f, -32767.0f, 32767.0f, 8000.0f,5000);
-    /* 创建电机 */
-    FOC_3::PIDCtrl m2_pid;
-    m2_pid.speed     = &m2_speed_pid;
-    m2_pid.location  = &m2_loc_pid;
-    m2_pid.direct    = &m2_direct_pid;
-    m2_pid.current_q = &m2_curq_pid;
-    m2_pid.current_d = &m2_curd_pid;
-
-    static MT6701 m2_enc({&hspi2, GPIOB, GPIO_PIN_12});
-    static FOC_3 motor2({&m2_enc,I_check_lowpass_M2, &htim2, &htim3, 11, 12.0f, 7.5f, 1.7f, 1, "motor1"});
-    motor2.init(m2_pid);
+    // //电机2
+    // /* 创建 PID */
+    // static control_PID m2_speed_pid, m2_loc_pid, m2_curq_pid, m2_curd_pid, m2_direct_pid;
+    // /* 初始化三环 PID 参数 */
+    // Control_PID_Init(&m2_speed_pid,   20000.0f, 230.0f, 0.0f, -30000.0f, 30000.0f, 1000.0f,2000.0f);
+    // // Control_PID_Init(&m2_loc_pid,     0.003f, 0.0f, 0.002f, -4.0f, 4.0f,1.0f, 15.0f);                     //齿槽补偿
+    // Control_PID_Init(&m2_loc_pid,     0.005f, 0.0f, 0.00f, -4.0f, 4.0f,1.0f, 15.0f);
+    // Control_PID_Init(&m2_curq_pid,    1.0f, 0.04f, 0.0f, -32767.0f, 32767.0f, 250,20000);
+    // // lowpass_Filter curOutFilter = {0.1f,0.0f};
+    // // PID_EnableOutputFilter(&m2_curq_pid, lowpass_filter,&curOutFilter);
+    //
+    // Control_PID_Init(&m2_curd_pid,    1.0f, 0.04f, 0.0f, -32767.0f, 32767.0f, 5000,5000);
+    // Control_PID_Init(&m2_direct_pid,  15.0f, 0.15f, 50.0f, -32767.0f, 32767.0f, 8000.0f,5000);
+    // /* 创建电机 */
+    // FOC_3::PIDCtrl m2_pid;
+    // m2_pid.speed     = &m2_speed_pid;
+    // m2_pid.location  = &m2_loc_pid;
+    // m2_pid.direct    = &m2_direct_pid;
+    // m2_pid.current_q = &m2_curq_pid;
+    // m2_pid.current_d = &m2_curd_pid;
+    //
+    // static MT6701 m2_enc({&hspi2, GPIOB, GPIO_PIN_12});
+    // static FOC_3 motor2({&m2_enc,I_check_lowpass_M2, &htim2, &htim3, 11, 12.0f, 7.5f, 1.7f, 1, "motor1"});
+    // motor2.init(m2_pid);
 
     // motor2.set_location_zero(-4500);
     // motor2.set_location_limit(4000,-4000);
