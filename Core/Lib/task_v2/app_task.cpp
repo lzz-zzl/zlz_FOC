@@ -308,7 +308,7 @@ static void FOC_3_task(void* /*argument*/) {
         // Serial_Printf("2: %d\n",get_tim_dif(2));
         // Serial_Printf("5: %d\n",get_tim_dif(5));
         // Serial_Printf("1: %d\n",dt);
-        Serial_Printf("0: %d\n",get_tim_dif(0));
+        // Serial_Printf("0: %d\n",get_tim_dif(0));
 
         // motor1.error_handle();
         // motor2.error_handle();
@@ -364,7 +364,7 @@ static void JY61PTestTask(void* /*argument*/) {
 
 
         /* VOFA+ justfloat 协议: gx gy gz roll pitch yaw */
-        Serial_JustFloat(out, 3);
+        // Serial_JustFloat(out, 3);
 
         // OLED_ShowSignedNum(4,1,pitch,6);
         osDelay(10);
@@ -410,15 +410,15 @@ static void task_printf(void * /*argument*/) {
         }else if (FOC_3::pid_debug == 3) {
         FOC_3::showPID_location(temp);
         }
-        temp[4] = world_dir;
+        // temp[4] = world_dir;
         // temp[3] = world_location_target;
         // temp[4] = FOC_3::instances[0]->get_iq_target();
-        temp[3] = test_sin;
+        // temp[3] = test_sin;
 
 
-        Serial_JustFloat(temp,5);
+        // Serial_JustFloat(temp,5);
         // temp[0] = (float)out[1];
-        // Serial_JustFloat(out,6);
+        Serial_JustFloat(out,6);
         osDelay(5);
     }
 }
@@ -439,7 +439,7 @@ static void CreateTasks() {
         // { "SerialTask",  &SerialTaskFunc,  config::SERIAL_STACK_SIZE, config::SERIAL_PRIORITY },
         { "OLED_Task",   &OLEDTaskFunc,    config::OLED_STACK_SIZE,   30 },
         // { "FOC_Task",    &FOCTaskFunc,     config::FOC_STACK_SIZE,    config::FOC_PRIORITY },
-        { "task_printf", &task_printf,  256 * 4 , 42 },
+        { "task_printf", &task_printf,  256 * 4 , 45 },
         { "JY61P_Test",  &JY61PTestTask,   256 * 4,                  40 },
         { "FOC_3_task",    &FOC_3_task,     512*4,    45 },
     };
