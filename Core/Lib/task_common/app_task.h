@@ -13,6 +13,8 @@
 extern "C" {
 #endif
 
+extern int16_t test_count121;
+
 void Task_Manager_Init(void);
 void Task_Manager_Run(void);
 

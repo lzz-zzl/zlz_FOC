@@ -39,6 +39,8 @@ extern "C" {
 extern uint16_t tim5_count;
 extern uint16_t adc_dma_count;
 
+int16_t test_count121 = 0;
+
 
 uint8_t *test_data = NULL;
 void set_testdata(uint8_t * p) {
@@ -214,7 +216,7 @@ static void OLEDTaskFunc(void* /*argument*/) {
 
             /* 行4: Ia:+123 Ib:-045 */
             OLED_ShowNum(4, 13,get_tim_dif(1), 3);
-            OLED_ShowNum(4, 8,adc_dma_count, 3);
+            OLED_ShowNum(4, 1,test_count121, 3);
             // OLED_ShowNum(4, 13,FOC_3::pid_debug, 3);
         } else {
             OLED_ShowString(1, 8, "no motor");
