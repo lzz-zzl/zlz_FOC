@@ -15,6 +15,9 @@
 /* USART6 DMA 接收缓冲 (声明在 main.c) */
 extern uint8_t uart6_rx_buf[];
 
+/* USART2 DMA 接收缓冲 (声明在 main.c) */
+extern uint8_t uart2_rx_buf[];
+
 osSemaphoreId_t uart_sem;
 
 void Serial_Printf(char *format, ...);
@@ -35,7 +38,6 @@ char Serial_RxPacket[100];
 char Serial_RxPacket2[100];
 
 uint8_t temp_rxdata1;
-uint8_t temp_rxdata2;
 uint8_t Serial_RxFlag;
 uint8_t Serial_RxFlag2;
 
@@ -53,7 +55,8 @@ void Serial_Init(void)
 	/* USART1/2 已在 main.c 中由 MX_USARTx_UART_Init() 初始化, 不再重复调用 */
 	HAL_UARTEx_ReceiveToIdle_DMA(&huart1, uart1_rx_buf, UART1_RX_BUF_SIZE);
 	__HAL_UART_CLEAR_IDLEFLAG(&huart1);
-	HAL_UART_Receive_IT(&huart2, &temp_rxdata2, 1);
+	HAL_UARTEx_ReceiveToIdle_DMA(&huart2, uart2_rx_buf, 256);
+	__HAL_UART_CLEAR_IDLEFLAG(&huart2);
 	uart_sem = osSemaphoreNew(1, 0, NULL);  // 最大计数1, 初始可用0
 
 	/* 启动 USART6 DMA+IDLE 接收 (JY61P 陀螺仪) */
@@ -312,11 +315,6 @@ void Serial_Printf(char *format, ...)
 void receive_state1() {
 	static uint8_t RxState_1 = 0;    // 接收状态机
 	static uint8_t pRxPacket_1 = 0;  // 缓存指针
-
-	static uint8_t RxState_2 = 0;    // 接收状态机
-	static uint8_t pRxPacket_2 = 0;  // 缓存指针
-
-
 	uint8_t RxData;
 	RxData = temp_rxdata1;
 	// 状态机解析：[数据] 格式
@@ -387,6 +385,13 @@ void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size)
         }
         HAL_UARTEx_ReceiveToIdle_DMA(&huart6, uart6_rx_buf, UART6_RX_BUF_SIZE);
     }
+    else if (huart->Instance == USART2) {
+        for (uint16_t i = 0; i < Size; i++) {
+        	// Serial_SendVar("t1",uart2_rx_buf[0]);
+        	// Serial_SendVar("t2",uart2_rx_buf[1]);
+        }
+        HAL_UARTEx_ReceiveToIdle_DMA(&huart2, uart2_rx_buf, 256);
+    }
 }
 
 
@@ -397,43 +402,14 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
 		return;
 	}
 
-	uint8_t RxData;
-
-	static uint8_t RxState_2 = 0;
-	static uint8_t pRxPacket_2 = 0;
 	if(huart->Instance == USART2 )
 	{
-		RxData = temp_rxdata2;
-		// 状态机解析：[数据] 格式
-		if (RxState_2 == 0)
-		{
-			// 起始符检测：'[' 且未处于接收中
-			if (RxData == '[' && Serial_RxFlag == 0)
-			{
-				RxState_2 = 1;
-				pRxPacket_2 = 0;  // 重置缓存指针
-			}
+		/* DMA 缓冲收满 (256 字节) — 喂给解析函数再重启 DMA */
+		for (uint16_t i = 0; i < 256; i++) {
+			/* TODO: 替换为你的视觉数据解析函数 */
 		}
-		else if (RxState_2 == 1)
-		{
-			// 结束符检测：']'
-			if (RxData == ']')
-			{
-				RxState_2 = 0;
-				Serial_RxPacket2[pRxPacket_2] = '\0';  // 字符串结束符
-				Serial_RxFlag2 = 1;                  // 接收完成置位
-			}
-			else
-			{
-				// 防止缓存溢出
-				if(pRxPacket_2 < 100 - 1)
-				{
-					Serial_RxPacket2[pRxPacket_2] = RxData;
-					pRxPacket_2++;
-				}
-			}
-			if(huart->Instance == USART2) HAL_UART_Receive_IT(&huart2, &temp_rxdata2, 1);
-		}
+		HAL_UARTEx_ReceiveToIdle_DMA(&huart2, uart2_rx_buf, 256);
+		__HAL_UART_CLEAR_IDLEFLAG(&huart2);
 	}
 	else if(huart->Instance == USART6){
 		/* DMA 缓冲收满 (256 字节) — 也喂给状态机再重启 DMA */
@@ -464,6 +440,13 @@ void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart)
 		/* 重新开启 DMA+IDLE 接收 */
 		HAL_UARTEx_ReceiveToIdle_DMA(&huart6, uart6_rx_buf, 256);
 		__HAL_UART_CLEAR_IDLEFLAG(&huart6);
+	}
+	else if (huart->Instance == USART2) {
+		/* 清除错误标志并重启 RX DMA */
+		volatile uint8_t tmp = huart2.Instance->DR;  (void)tmp;
+		__HAL_UART_CLEAR_FLAG(&huart2, UART_FLAG_ORE | UART_FLAG_NE | UART_FLAG_FE | UART_FLAG_PE);
+		HAL_UARTEx_ReceiveToIdle_DMA(&huart2, uart2_rx_buf, 256);
+		__HAL_UART_CLEAR_IDLEFLAG(&huart2);
 	}
 }
 

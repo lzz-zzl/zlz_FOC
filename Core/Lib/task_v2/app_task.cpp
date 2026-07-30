@@ -256,7 +256,7 @@ static void FOC_3_task(void* /*argument*/) {
     static FOC_3 motor1({&m1_enc,I_check_lowpass_M1, &htim1, &htim3, 11, 12.0f, 7.5f, 1.7f, 0, "motor1"});
     motor1.init(m1_pid);
     motor1.set_location_zero(5700);
-    motor1.set_location_limit(2000,-4000);
+    motor1.set_location_limit(2000,-2000);
     // motor1.set_cogging_enable(false);
 
     // //电机2
