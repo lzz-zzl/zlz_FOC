@@ -56,6 +56,9 @@
 /* USART6 DMA 接收缓冲 (CIRCULAR, 陀螺仪) */
 uint8_t uart6_rx_buf[256];
 
+/* USART2 DMA 接收缓冲 (视觉) */
+uint8_t uart2_rx_buf[256];
+
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/

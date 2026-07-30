@@ -44,6 +44,8 @@ extern UART_HandleTypeDef huart6;
 
 /* USER CODE BEGIN Private defines */
 
+extern DMA_HandleTypeDef hdma_usart2_rx;
+
 /* USER CODE END Private defines */
 
 void MX_UART4_Init(void);
