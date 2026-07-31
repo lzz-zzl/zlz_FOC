@@ -269,7 +269,7 @@ void FOC_3::current_pi_loop() {
     /* Q15 */
     float target = (float)m_i_q_target;
     if (m_cogging_enable)
-        target += (float)m_cogging_table[m_elect_angle];
+        target += (float)m_cogging_table[m_elect_angle] ;
     m_current_q_obj.Target = target;
     m_current_q_obj.Actual = (float)m_i_q_q15;
     m_uq = (int16_t)PID_Calculate_Fast(m_current_q_pid, &m_current_q_obj) ;
@@ -277,6 +277,8 @@ void FOC_3::current_pi_loop() {
     m_current_d_obj.Target = 0.0f;
     m_current_d_obj.Actual = (float)m_i_d_q15;
     m_ud = (int16_t)PID_Calculate_Fast(m_current_d_pid, &m_current_d_obj);
+
+    test_curdata[0] = m_current_d_obj.Actual -= (float)m_cogging_table[m_elect_angle];
 }
 
 /* ========================================================================== */

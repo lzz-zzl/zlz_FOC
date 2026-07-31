@@ -115,6 +115,19 @@ void control_trace() {
     }
 }
 
+int16_t ball_location = 0;
+int16_t ball_location_target = 0;
+
+control_PID ball_balance_PID;
+void ball_balance_init() {
+    Control_PID_Init(&ball_balance_PID,   0.0f, 0.0f, 0.0f, -2000.0f, 2000.0f, 20000.0f,20000.0f);
+
+}
+
+void ball_balance() {
+
+}
+
 
 /* ======================== 正弦信号控制器命令解析 ======================== */
 /* 串口格式 (VOFA+ 键值对):  key:value
@@ -239,13 +252,13 @@ static void FOC_3_task(void* /*argument*/) {
     Control_PID_Init(&m1_speed_pid,   3000.0f, 200.0f, 0.0f, -32767.0f, 32767.0f, 20000.0f,20000.0f);
     m1_speed_pid.Er_weaken = 0.98;
     // Control_PID_Init(&m1_loc_pid,     0.0012f, 0.0f, 0.0002f, -4.0f, 4.0f,1.0f, 15.0f);                     //精确稳健
-    Control_PID_Init(&m1_loc_pid,     0.004f, 0.0f, 0.001f, -1.0f, 1.0f,1.0f, 15.0f);     //响应速度
+    Control_PID_Init(&m1_loc_pid,     0.0075f, 0.0f, 0.001f, -4.0f, 4.0f,4.0f, 15.0f);     //响应速度
 
     Control_PID_Init(&m1_curq_pid,    1.0f, 0.04f, 0.0f, -32767.0f, 32767.0f, 250,20000);
     // lowpass_Filter curOutFilter = {0.1f,0.0f};
     // PID_EnableOutputFilter(&m1_curq_pid, lowpass_filter,&curOutFilter);
 
-    Control_PID_Init(&m1_curd_pid,    1.0f, 0.04f, 0.0f, -32767.0f, 32767.0f, 5000,5000);
+    Control_PID_Init(&m1_curd_pid,    10.0f, 0.04f, 0.0f, -32767.0f, 32767.0f, 5000,5000);
     Control_PID_Init(&m1_direct_pid,  15.0f, 0.15f, 50.0f, -32767.0f, 32767.0f, 8000.0f,5000);
     /* 创建电机 */
     FOC_3::PIDCtrl m1_pid;
@@ -412,15 +425,15 @@ static void task_printf(void * /*argument*/) {
         }else if (FOC_3::pid_debug == 3) {
         FOC_3::showPID_location(temp);
         }
-        // temp[4] = world_dir;
+        temp[4] = test_curdata[0];
         // temp[3] = world_location_target;
         // temp[4] = FOC_3::instances[0]->get_iq_target();
-        // temp[3] = test_sin;
+        temp[3] = test_sin;
 
 
-        // Serial_JustFloat(temp,5);
+        Serial_JustFloat(temp,5);
         // temp[0] = (float)out[1];
-        Serial_JustFloat(out,6);
+        // Serial_JustFloat(out,6);
         osDelay(5);
     }
 }
