@@ -105,6 +105,7 @@ void FOC_3::init(const PIDCtrl &pid) {
     m_adc_zero_b = I_Check_Get_Offset_M1_B();
 
     elect_angle_zero_calibration();
+    m_elect_angle_zero = 5777;
     set_volt(0, 0, 0);
 
     //齿槽补偿

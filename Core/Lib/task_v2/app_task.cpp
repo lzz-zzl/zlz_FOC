@@ -122,7 +122,7 @@ bool ball_balance_en = false;
 control_object ball_location_O;
 control_PID ball_balance_PID;
 void ball_balance_init() {
-    Control_PID_Init(&ball_balance_PID,   0.0f, 0.0f, 0.0f, -2000.0f, 2000.0f, 20000.0f,20000.0f);
+    Control_PID_Init(&ball_balance_PID,   40.0f, 0.05f, 210.0f, -2000.0f, 2000.0f, 200.0f,200.0f);
 
 }
 void testdd() {
@@ -132,7 +132,7 @@ void ball_balance() {
     if (ball_balance_en) {
         ball_location = -(float)vision_center_x/100;
         ball_location_O.Actual = ball_location;
-        ball_location_O.Target = 0;
+        ball_location_O.Target = ball_location_target;
         float out = PID_Calculate_DerivativeOnMeasure(&ball_balance_PID,&ball_location_O);
         FOC_3::instances[0]->set_location_target((int16_t)out);
     }
@@ -243,7 +243,7 @@ static void OLEDTaskFunc(void* /*argument*/) {
             OLED_ShowNum(3, 9, m->get_encode_val(), 5);
 
             /* 行4: Ia:+123 Ib:-045 */
-            OLED_ShowNum(4, 13,get_tim_dif(1), 3);
+            OLED_ShowNum(4, 7,m->get_elect_angle_zero(), 5);
             OLED_ShowNum(4, 1,test_count121, 3);
             // OLED_ShowNum(4, 13,FOC_3::pid_debug, 3);
         } else {
