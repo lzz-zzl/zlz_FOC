@@ -115,17 +115,27 @@ void control_trace() {
     }
 }
 
-int16_t ball_location = 0;
-int16_t ball_location_target = 0;
+float ball_location = 0;
+float ball_location_target = 0;
+bool ball_balance_en = false;
 
+control_object ball_location_O;
 control_PID ball_balance_PID;
 void ball_balance_init() {
     Control_PID_Init(&ball_balance_PID,   0.0f, 0.0f, 0.0f, -2000.0f, 2000.0f, 20000.0f,20000.0f);
 
 }
-
+void testdd() {
+    ball_balance_PID.kp = 0.1f;
+}
 void ball_balance() {
-
+    if (ball_balance_en) {
+        ball_location = -(float)vision_center_x/100;
+        ball_location_O.Actual = ball_location;
+        ball_location_O.Target = 0;
+        float out = PID_Calculate_DerivativeOnMeasure(&ball_balance_PID,&ball_location_O);
+        FOC_3::instances[0]->set_location_target((int16_t)out);
+    }
 }
 
 
@@ -151,6 +161,8 @@ void Sin_Parse(const char *key, const char *val_str) {
     else if (strcmp(key, "sin_stop") == 0) {
         g_sin_en = false;
         g_square_en = false;
+    }else if (strcmp(key, "BALL") == 0) {
+        ball_balance_en = (bool)val;
     }
     else if (strcmp(key, "sin_amp") == 0) {
         g_sin.amplitude = val;
@@ -171,6 +183,9 @@ void Sin_Parse(const char *key, const char *val_str) {
     }
     else if (strcmp(key, "en_trace") == 0) {
         start_trace((int8_t)val);
+    }
+    else if (strcmp(key, "ball_loc") == 0) {
+        ball_location_target = val;
     }
 }
 
@@ -242,7 +257,7 @@ static void OLEDTaskFunc(void* /*argument*/) {
 }
 
 static void FOC_3_task(void* /*argument*/) {
-
+    ball_balance_init();
     Serial_Init();
     control_tim_start();
 
@@ -272,6 +287,8 @@ static void FOC_3_task(void* /*argument*/) {
     motor1.init(m1_pid);
     motor1.set_location_zero(5700);
     motor1.set_location_limit(2000,-2000);
+
+    Serial_SendVar("zero",motor1.get_elect_angle_zero());
     // motor1.set_cogging_enable(false);
 
     // //电机2
@@ -425,7 +442,12 @@ static void task_printf(void * /*argument*/) {
         }else if (FOC_3::pid_debug == 3) {
         FOC_3::showPID_location(temp);
         }
-        temp[4] = test_curdata[0];
+        else if (FOC_3::pid_debug == 6) {
+            temp[0] = ball_location_O.Target;
+            temp[1] = ball_location_O.Actual;
+            temp[2] = ball_location_O.Out;
+        }
+        temp[4] = ball_location;
         // temp[3] = world_location_target;
         // temp[4] = FOC_3::instances[0]->get_iq_target();
         temp[3] = test_sin;

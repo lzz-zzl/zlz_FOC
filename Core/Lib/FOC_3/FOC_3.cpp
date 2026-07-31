@@ -5,6 +5,7 @@
 //
 
 #include "FOC_3.h"
+#include "app_task.h"
 #include "tim.h"
 #include <string.h>
 #include <stdio.h>
@@ -741,6 +742,7 @@ void FOC_3::parse_keyValue(const char *key, char *val_str)
                 case 2: pid = m->m_speed_pid;     break;
                 case 3: pid = m->m_location_pid;  break;
                 case 4: pid = m->m_direct_pid;    break;
+                case 6: pid = &ball_balance_PID;  break;
             }
             if (pid) pid->kp = val;
             Serial_SendVar("pid",pid_debug);
@@ -754,6 +756,7 @@ void FOC_3::parse_keyValue(const char *key, char *val_str)
                 case 2: pid = m->m_speed_pid;     break;
                 case 3: pid = m->m_location_pid;  break;
                 case 4: pid = m->m_direct_pid;    break;
+                case 6: pid = &ball_balance_PID;  break;
             }
             if (pid) pid->ki = val;
             Serial_SendVar("pid",pid_debug);
@@ -767,6 +770,7 @@ void FOC_3::parse_keyValue(const char *key, char *val_str)
                 case 2: pid = m->m_speed_pid;     break;
                 case 3: pid = m->m_location_pid;  break;
                 case 4: pid = m->m_direct_pid;    break;
+                case 6: pid = &ball_balance_PID;  break;
             }
             if (pid) pid->kd = val;
             Serial_SendVar("pid",pid_debug);

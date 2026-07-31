@@ -12,8 +12,12 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
+#include "Control.h"
 
 extern int16_t test_count121;
+
+    extern control_object ball_location_O;
+    extern control_PID ball_balance_PID;
 
 void Task_Manager_Init(void);
 void Task_Manager_Run(void);
@@ -26,6 +30,7 @@ void App_Task_Create(void);
 
     void Sin_control();
   void  control_trace();
+    void ball_balance();
 
 #ifdef __cplusplus
 }

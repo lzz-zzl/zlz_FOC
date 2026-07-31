@@ -19,6 +19,13 @@ extern uint8_t Serial_key[10];
 extern float Serial_slider[5];
 extern uint16_t Serial_joystick[2][2];
 
+/* 视觉 (K230) 数据包解析结果 */
+extern int16_t vision_center_x;          /* 目标中心 X 坐标 (int16) */
+extern uint8_t vision_state;             /* 目标状态 */
+extern volatile uint8_t vision_frame_ready;  /* 新帧就绪标志, 读完清零 */
+
+void Serial_ParseVisionByte(uint8_t data);
+
 void Serial_Init(void);
 void Serial_SendByte(uint8_t Byte);
 void Serial_SendArray(uint8_t *Array, uint16_t Length);

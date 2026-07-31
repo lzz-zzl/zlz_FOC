@@ -367,6 +367,48 @@ void receive_state_keyVal(uint8_t data) {
 	}
 }
 
+/* ========== 视觉 (K230) 数据包解析 ========== */
+/* 上位机帧格式: [0xAA][center_x_lo][center_x_hi][state][checksum] (共5字节)
+ *   center_x : int16, 小端序 (低字节在前)
+ *   state    : 1 字节目标状态
+ *   checksum : 前 4 字节异或和
+ */
+int16_t vision_center_x = 0;
+uint8_t vision_state = 0;
+volatile uint8_t vision_frame_ready = 0;
+
+static uint8_t vision_rx_state = 0;   /* 状态机: 0=等帧头 1~3=收数据 4=校验 */
+static uint8_t vision_pkt[4];         /* 帧头+数据暂存 */
+
+void Serial_ParseVisionByte(uint8_t data)
+{
+    switch (vision_rx_state)
+    {
+    case 0:                        /* 等待帧头 0xAA */
+        if (data == 0xAA) {
+            vision_pkt[0] = data;
+            vision_rx_state = 1;
+        }
+        break;
+    case 1:  vision_pkt[1] = data; vision_rx_state = 2; break;
+    case 2:  vision_pkt[2] = data; vision_rx_state = 3; break;
+    case 3:  vision_pkt[3] = data; vision_rx_state = 4; break;
+    case 4: {                      /* 校验字节 */
+        uint8_t sum = vision_pkt[0] ^ vision_pkt[1] ^ vision_pkt[2] ^ vision_pkt[3];
+        if (data == sum) {
+            vision_center_x  = (int16_t)(vision_pkt[1] | ((uint16_t)vision_pkt[2] << 8));
+            vision_state     = vision_pkt[3];
+            vision_frame_ready = 1;
+        }
+        vision_rx_state = 0;       /* 无论对错都回到等帧头 */
+        break;
+    }
+    default:
+        vision_rx_state = 0;       /* 意外状态兜底 */
+        break;
+    }
+}
+
 /**
   * @brief  USART1 DMA+IDLE 接收完成回调
   *         收到数据或总线空闲时触发，逐字节喂给状态机
@@ -386,17 +428,9 @@ void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size)
         HAL_UARTEx_ReceiveToIdle_DMA(&huart6, uart6_rx_buf, UART6_RX_BUF_SIZE);
     }
     else if (huart->Instance == USART2) {
+        /* 逐字节喂给视觉解析状态机 */
         for (uint16_t i = 0; i < Size; i++) {
-        	static uint8_t count = 0;
-        	count++;
-        	if (count>100) {
-        		Serial_SendVar("t1",uart2_rx_buf[0]);
-        		Serial_SendVar("t2",uart2_rx_buf[1]);
-        		Serial_SendVar("t2",uart2_rx_buf[2]);
-        		Serial_SendVar("t2",uart2_rx_buf[3]);
-        		Serial_SendVar("t2",uart2_rx_buf[4]);
-        		count = 0;
-        	}
+            Serial_ParseVisionByte(uart2_rx_buf[i]);
         }
     	test_count121++;
         HAL_UARTEx_ReceiveToIdle_DMA(&huart2, uart2_rx_buf, 256);
@@ -413,9 +447,9 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
 
 	if(huart->Instance == USART2 )
 	{
-		/* DMA 缓冲收满 (256 字节) — 喂给解析函数再重启 DMA */
+		/* DMA 缓冲收满 (256 字节) — 逐字节喂给视觉解析再重启 DMA */
 		for (uint16_t i = 0; i < 256; i++) {
-			/* TODO: 替换为你的视觉数据解析函数 */
+			Serial_ParseVisionByte(uart2_rx_buf[i]);
 		}
 		HAL_UARTEx_ReceiveToIdle_DMA(&huart2, uart2_rx_buf, 256);
 		__HAL_UART_CLEAR_IDLEFLAG(&huart2);
