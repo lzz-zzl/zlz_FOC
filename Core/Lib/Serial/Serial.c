@@ -392,8 +392,9 @@ void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size)
         	if (count>100) {
         		Serial_SendVar("t1",uart2_rx_buf[0]);
         		Serial_SendVar("t2",uart2_rx_buf[1]);
-        		Serial_SendVar("t2",uart2_rx_buf[1]);
-        		Serial_SendVar("t2",uart2_rx_buf[1]);
+        		Serial_SendVar("t2",uart2_rx_buf[2]);
+        		Serial_SendVar("t2",uart2_rx_buf[3]);
+        		Serial_SendVar("t2",uart2_rx_buf[4]);
         		count = 0;
         	}
         }
