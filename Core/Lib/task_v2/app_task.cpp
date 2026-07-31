@@ -124,14 +124,14 @@ bool ball_balance_en = false;
 control_object ball_location_O;
 control_PID ball_balance_PID;
 void ball_balance_init() {
-    Control_PID_Init(&ball_balance_PID,   100.0f, 0.15f, 12000.0f, -2000.0f, 2000.0f, 200.0f,200.0f);
+    Control_PID_Init(&ball_balance_PID,   150.0f, 0.35f, 16000.0f, -2000.0f, 2000.0f, 200.0f,200.0f);
 
 }
 void testdd() {
     ball_balance_PID.kp = 0.1f;
 }
 
-#define alpha_ball_lac 0.2
+#define alpha_ball_lac 0.1
 float out_ball_loc  = 0;
 void ball_balance() {
     if (ball_balance_en) {
