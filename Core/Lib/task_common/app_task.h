@@ -19,6 +19,11 @@ extern int16_t test_count121;
     extern control_object ball_location_O;
     extern control_PID ball_balance_PID;
 
+    /* 按键事件标志 (PE1=KEY1, PE3=KEY3) — 消费后请手动清 0 */
+    extern volatile uint8_t KEY1_pressed;
+    extern volatile uint8_t KEY3_pressed;
+    void Key_Scan(void);
+
 void Task_Manager_Init(void);
 void Task_Manager_Run(void);
 

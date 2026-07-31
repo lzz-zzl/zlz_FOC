@@ -84,6 +84,7 @@ static void FOCTaskFunc(void* argument);
 static void MT6701TaskFunc(void* argument);
 static void JY61PTestTask(void* argument);
 static void FOC_3_test_task(void* argument);
+static void KEYTaskFunc(void* argument);
 
 
 // ====================================================================
@@ -115,6 +116,7 @@ void control_trace() {
     }
 }
 
+uint8_t TI_state =0;
 float ball_location = 0;
 float ball_location_target = 0;
 bool ball_balance_en = false;
@@ -122,19 +124,25 @@ bool ball_balance_en = false;
 control_object ball_location_O;
 control_PID ball_balance_PID;
 void ball_balance_init() {
-    Control_PID_Init(&ball_balance_PID,   40.0f, 0.05f, 210.0f, -2000.0f, 2000.0f, 200.0f,200.0f);
+    Control_PID_Init(&ball_balance_PID,   40.0f, 0.10f, 4000.0f, -2000.0f, 2000.0f, 200.0f,200.0f);
 
 }
 void testdd() {
     ball_balance_PID.kp = 0.1f;
 }
+
+#define alpha_ball_lac 0.2
+float out_ball_loc  = 0;
 void ball_balance() {
     if (ball_balance_en) {
+        if (TI_state == 1) {
+            ball_location_target = 5;
+        }
         ball_location = -(float)vision_center_x/100;
         ball_location_O.Actual = ball_location;
         ball_location_O.Target = ball_location_target;
-        float out = PID_Calculate_DerivativeOnMeasure(&ball_balance_PID,&ball_location_O);
-        FOC_3::instances[0]->set_location_target((int16_t)out);
+        out_ball_loc = PID_Calculate_DerivativeOnMeasure(&ball_balance_PID,&ball_location_O)*alpha_ball_lac + out_ball_loc*(1-alpha_ball_lac);
+        FOC_3::instances[0]->set_location_target((int16_t)out_ball_loc);
     }
 }
 
@@ -213,11 +221,71 @@ void Sin_control() {
 }
 
 
+/* ====================================================================
+ * 按键扫描框架 (PE1=KEY1, PE3=KEY3)
+ *   - 轮询 + 软件消抖: 连续 KEY_DEBOUNCE_N 次反相才确认电平翻转
+ *   - 边沿检测: 只在"按下"瞬间置一次事件标志, 按住不重复触发
+ *   - 消费方式: 在主循环检查 KEYx_pressed, 用后手动清 0
+ *   - 电平: 板载按键按下接 GND → 低电平有效
+ * ==================================================================== */
+#define KEY_DEBOUNCE_N   3       /* 连续采样次数 (×20ms ≈ 60ms 消抖) */
+
+volatile uint8_t KEY1_pressed = 0;   /* 按下事件, 消费后清 0 */
+volatile uint8_t KEY3_pressed = 0;
+
+typedef struct {
+    GPIO_TypeDef  *port;
+    uint16_t       pin;
+    uint8_t        state;           /* 当前稳定电平 (1=释放 0=按下) */
+    uint8_t        cnt;             /* 连续反相计数 */
+    volatile uint8_t *pressed;      /* 指向对应事件标志 */
+} key_desc_t;
+
+static key_desc_t keys[] = {
+    { KEY1_GPIO_Port, KEY1_Pin, 1, 0, &KEY1_pressed },
+    { KEY3_GPIO_Port, KEY3_Pin, 1, 0, &KEY3_pressed },
+};
+
+void Key_Scan()
+{
+    for (auto &k : keys) {
+        uint8_t level = HAL_GPIO_ReadPin(k.port, k.pin);
+        if (level == k.state) {
+            k.cnt = 0;                       /* 电平未变, 计数归零 */
+        } else if (++k.cnt >= KEY_DEBOUNCE_N) {
+            k.state = level;                 /* 连续 N 次反相, 确认翻转 */
+            if (k.state == 0) {
+                *k.pressed = 1;              /* 下降沿 = 按下, 只报一次 */
+            }
+            k.cnt = 0;
+        }
+    }
+}
+
+static void KEYTaskFunc(void* /*argument*/)
+{
+    for (;;) {
+        Key_Scan();
+        osDelay(config::BUTTON_SCAN_MS);     /* 20ms 轮询 */
+    }
+}
+
+
 
 
 static void OLEDTaskFunc(void* /*argument*/) {
     OLED_Init();
     for (;;) {
+
+        /* 按键 → 串口: 按下时发送按键标记 (消费后清 0) */
+        if (KEY1_pressed) {
+            KEY1_pressed = 0;
+            Serial_SendVar("KEY1", 1);
+        }
+        if (KEY3_pressed) {
+            KEY3_pressed = 0;
+            Serial_SendVar("KEY3", 1);
+        }
 
         FOC_3 *m = FOC_3::instances[FOC_3::motorID_debug];
         if (m) {
@@ -475,6 +543,7 @@ static void CreateTasks() {
     constexpr TaskDef tasks[] = {
         // { "SerialTask",  &SerialTaskFunc,  config::SERIAL_STACK_SIZE, config::SERIAL_PRIORITY },
         { "OLED_Task",   &OLEDTaskFunc,    config::OLED_STACK_SIZE,   30 },
+        { "KEY_Task",    &KEYTaskFunc,     128 * 4,                  35 },
         // { "FOC_Task",    &FOCTaskFunc,     config::FOC_STACK_SIZE,    config::FOC_PRIORITY },
         { "task_printf", &task_printf,  256 * 4 , 45 },
         { "JY61P_Test",  &JY61PTestTask,   256 * 4,                  40 },
