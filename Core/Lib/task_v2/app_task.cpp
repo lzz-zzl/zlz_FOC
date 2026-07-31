@@ -124,7 +124,7 @@ bool ball_balance_en = false;
 control_object ball_location_O;
 control_PID ball_balance_PID;
 void ball_balance_init() {
-    Control_PID_Init(&ball_balance_PID,   40.0f, 0.10f, 4000.0f, -2000.0f, 2000.0f, 200.0f,200.0f);
+    Control_PID_Init(&ball_balance_PID,   100.0f, 0.15f, 12000.0f, -2000.0f, 2000.0f, 200.0f,200.0f);
 
 }
 void testdd() {
@@ -137,6 +137,11 @@ void ball_balance() {
     if (ball_balance_en) {
         if (TI_state == 1) {
             ball_location_target = 5;
+            if (ball_location- 5 <1 && ball_location - 5 > -1) {
+                TI_state =2;
+            }
+        }else if (TI_state ==2) {
+            ball_location_target = -5;
         }
         ball_location = -(float)vision_center_x/100;
         ball_location_O.Actual = ball_location;
@@ -194,6 +199,9 @@ void Sin_Parse(const char *key, const char *val_str) {
     }
     else if (strcmp(key, "ball_loc") == 0) {
         ball_location_target = val;
+    }
+    else if (strcmp(key, "ball_state") == 0) {
+        TI_state = (uint8_t)val;
     }
 }
 
