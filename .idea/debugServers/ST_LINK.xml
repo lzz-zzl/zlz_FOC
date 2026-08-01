@@ -1,5 +1,5 @@
 <component name="DebugServers">
-  <stlink-debug-target name="ST-LINK" uniqueID="c7687820-bb15-42fd-8e99-c81fb3865dcb" selected="true">
+  <stlink-debug-target name="ST-LINK" uniqueID="c7687820-bb15-42fd-8e99-c81fb3865dcb">
     <debugger version="1">
       <debugger kind="GDB" isBundled="true" />
       <env />

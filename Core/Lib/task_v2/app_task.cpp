@@ -133,6 +133,7 @@ void testdd() {
 
 #define alpha_ball_lac 0.1
 float out_ball_loc  = 0;
+float ball_ff_gain  = 0.0f;    /* JY61P Y轴加速度前馈增益 (串口 ball_ff 调节) */
 void ball_balance() {
     if (ball_balance_en) {
         if (TI_state == 1) {
@@ -147,6 +148,14 @@ void ball_balance() {
         ball_location_O.Actual = ball_location;
         ball_location_O.Target = ball_location_target;
         out_ball_loc = PID_Calculate_DerivativeOnMeasure(&ball_balance_PID,&ball_location_O)*alpha_ball_lac + out_ball_loc*(1-alpha_ball_lac);
+
+        /* JY61P Y轴加速度前馈: 平台倾斜 → 重力分量扰动球, 用 ay 提前补偿 */
+        // if (ball_ff_gain != 0.0f) {
+        //     float ay;
+        //     JY61P_GetAccel(NULL, &ay, NULL);
+        //     out_ball_loc += ball_ff_gain * ay;
+        // }
+
         FOC_3::instances[0]->set_location_target((int16_t)out_ball_loc);
     }
 }
@@ -202,6 +211,9 @@ void Sin_Parse(const char *key, const char *val_str) {
     }
     else if (strcmp(key, "ball_state") == 0) {
         TI_state = (uint8_t)val;
+    }
+    else if (strcmp(key, "ball_ff") == 0) {
+        ball_ff_gain = val;                 /* Y轴加速度前馈增益 */
     }
 }
 
