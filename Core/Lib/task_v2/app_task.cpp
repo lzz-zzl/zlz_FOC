@@ -125,7 +125,10 @@ control_object ball_location_O;
 control_PID ball_balance_PID;
 void ball_balance_init() {
     Control_PID_Init(&ball_balance_PID,   150.0f, 0.35f, 16000.0f, -2000.0f, 2000.0f, 200.0f,200.0f);
+    ball_balance_en = 1;
 
+    FOC_3_start();
+    FOC_3::driver_en = true;
 }
 void testdd() {
     ball_balance_PID.kp = 0.1f;
@@ -301,10 +304,24 @@ static void OLEDTaskFunc(void* /*argument*/) {
         if (KEY1_pressed) {
             KEY1_pressed = 0;
             Serial_SendVar("KEY1", 1);
+            if (TI_state == 0) {
+                TI_state = 1;
+            }
+            if (TI_state ==2) {
+                TI_state = 0;
+                ball_location_target = 0;
+            }
         }
         if (KEY3_pressed) {
             KEY3_pressed = 0;
             Serial_SendVar("KEY3", 1);
+            if (TI_state == 0) {
+                TI_state = 1;
+            }
+            if (TI_state ==2) {
+                TI_state = 0;
+            }
+
         }
 
         FOC_3 *m = FOC_3::instances[FOC_3::motorID_debug];
@@ -345,7 +362,6 @@ static void OLEDTaskFunc(void* /*argument*/) {
 }
 
 static void FOC_3_task(void* /*argument*/) {
-    ball_balance_init();
     Serial_Init();
     control_tim_start();
 
@@ -373,12 +389,15 @@ static void FOC_3_task(void* /*argument*/) {
     static MT6701 m1_enc({&hspi1, GPIOD, GPIO_PIN_7});
     static FOC_3 motor1({&m1_enc,I_check_lowpass_M1, &htim1, &htim3, 11, 12.0f, 7.5f, 1.7f, 0, "motor1"});
     motor1.init(m1_pid);
-    motor1.set_location_zero(5700);
+    motor1.set_location_zero(-330);
     motor1.set_location_limit(2000,-2000);
+
+    motor1.set_location_target(0);
+    motor1.set_state(4);
+    FOC_3::driver_en = 1;
 
     Serial_SendVar("zero",motor1.get_elect_angle_zero());
     // motor1.set_cogging_enable(false);
-
     // //电机2
     // /* 创建 PID */
     // static control_PID m2_speed_pid, m2_loc_pid, m2_curq_pid, m2_curd_pid, m2_direct_pid;
@@ -407,6 +426,8 @@ static void FOC_3_task(void* /*argument*/) {
     // motor2.set_location_zero(-4500);
     // motor2.set_location_limit(4000,-4000);
     control_trace_init();
+
+    ball_balance_init();
     for (;;) {
         osSemaphoreAcquire(uart_sem, osWaitForever);
         /* 关中断复制 kv_buf，防止 ISR 在 parse_kv 期间覆写 */
@@ -435,6 +456,7 @@ static void FOC_3_task(void* /*argument*/) {
         // osDelay(10);
     }
 }
+
 
 
 

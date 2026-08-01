@@ -262,7 +262,7 @@ extern "C" {
 
     void FOC_3_period();
     void FOC_3_parse_keyValue(char *key, char *val_str);
-
+    void FOC_3_start();
 #ifdef __cplusplus
 }
 #endif

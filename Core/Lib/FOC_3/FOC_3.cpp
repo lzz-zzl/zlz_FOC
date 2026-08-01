@@ -105,7 +105,7 @@ void FOC_3::init(const PIDCtrl &pid) {
     m_adc_zero_b = I_Check_Get_Offset_M1_B();
 
     elect_angle_zero_calibration();
-    m_elect_angle_zero = 5777;
+    // m_elect_angle_zero = 5777;
     set_volt(0, 0, 0);
 
     //齿槽补偿
@@ -680,7 +680,7 @@ void FOC_3::cogging_load_from_flash() {
 /*                  串口命令解析 (VOFA+ 键值对)                                */
 /* ========================================================================== */
 
-void FOC_3::parse_keyValue(const char *key, char *val_str)
+    void FOC_3::parse_keyValue(const char *key, char *val_str)
 {
     float val = val_str ? atof(val_str) : 0.0f;
     if (strcmp(key, "M_debug") == 0) {
@@ -882,3 +882,6 @@ void FOC_3_parse_keyValue(char *key, char *val_str) {
 }
 
 // void FOC_3::show
+void FOC_3_start() {
+    FOC_3::parse_keyValue("start","1");
+}
