@@ -137,7 +137,11 @@ void testdd() {
 #define alpha_ball_lac 0.1
 float out_ball_loc  = 0;
 float ball_ff_gain  = 0.0f;    /* JY61P Y轴加速度前馈增益 (串口 ball_ff 调节) */
+
 void ball_balance() {
+    if (vision_state == 2 && TI_state != 2 && TI_state != 1) {
+        TI_state = 1;
+    }
     if (ball_balance_en) {
         if (TI_state == 1) {
             ball_location_target = 5;
@@ -150,15 +154,19 @@ void ball_balance() {
         ball_location = -(float)vision_center_x/100;
         ball_location_O.Actual = ball_location;
         ball_location_O.Target = ball_location_target;
+        if (vision_state ==1) {
+            ball_location_O.Target = 0;
+        }
         out_ball_loc = PID_Calculate_DerivativeOnMeasure(&ball_balance_PID,&ball_location_O)*alpha_ball_lac + out_ball_loc*(1-alpha_ball_lac);
-
         /* JY61P Y轴加速度前馈: 平台倾斜 → 重力分量扰动球, 用 ay 提前补偿 */
-        // if (ball_ff_gain != 0.0f) {
-        //     float ay;
-        //     JY61P_GetAccel(NULL, &ay, NULL);
-        //     out_ball_loc += ball_ff_gain * ay;
-        // }
-
+        if (ball_ff_gain != 0.0f) {
+            float ay;
+            JY61P_GetAccel(NULL, &ay, NULL);
+            out_ball_loc -= ball_ff_gain * ay;
+        }
+        if (vision_state == 0) {
+            out_ball_loc = 0;
+        }
         FOC_3::instances[0]->set_location_target((int16_t)out_ball_loc);
     }
 }
@@ -225,7 +233,7 @@ void Sin_control() {
     const float dt = 0.005f;
     float temp;
 
-    if (g_sin_en) {
+    if (vision_state != 0) {
         temp = SineGen_Calc(&g_sin);
     } else if (g_square_en) {
         /* 直接基于 g_sin 的参数内联计算方波，相位共用 */
@@ -301,32 +309,33 @@ static void OLEDTaskFunc(void* /*argument*/) {
     for (;;) {
 
         /* 按键 → 串口: 按下时发送按键标记 (消费后清 0) */
-        if (KEY1_pressed) {
-            KEY1_pressed = 0;
-            Serial_SendVar("KEY1", 1);
-            if (TI_state == 0) {
-                TI_state = 1;
-            }
-            if (TI_state ==2) {
-                TI_state = 0;
-                ball_location_target = 0;
-            }
-        }
-        if (KEY3_pressed) {
-            KEY3_pressed = 0;
-            Serial_SendVar("KEY3", 1);
-            if (TI_state == 0) {
-                TI_state = 1;
-            }
-            if (TI_state ==2) {
-                TI_state = 0;
-            }
+        // if (KEY1_pressed) {
+        //     KEY1_pressed = 0;
+        //     Serial_SendVar("KEY1", 1);
+        //     if (TI_state == 0) {
+        //         TI_state = 1;
+        //     }
+        //     if (TI_state ==2) {
+        //         TI_state = 0;
+        //         ball_location_target = 0;
+        //     }
+        // }
+        // if (KEY3_pressed) {
+        //     KEY3_pressed = 0;
+        //     Serial_SendVar("KEY3", 1);
+        //     if (TI_state == 0) {
+        //         TI_state = 1;
+        //     }
+        //     if (TI_state ==2) {
+        //         TI_state = 0;
+        //     }
 
-        }
+        // }
 
         FOC_3 *m = FOC_3::instances[FOC_3::motorID_debug];
         if (m) {
             static uint8_t count = 0;
+            uint8_t test_b = HAL_GPIO_ReadPin(GPIOE,GPIO_PIN_1);
             count++;
             OLED_ShowNum(1,1,count,3);
 
@@ -350,7 +359,7 @@ static void OLEDTaskFunc(void* /*argument*/) {
             /* 行4: Ia:+123 Ib:-045 */
             OLED_ShowNum(4, 7,m->get_elect_angle_zero(), 5);
             OLED_ShowNum(4, 1,test_count121, 3);
-            // OLED_ShowNum(4, 13,FOC_3::pid_debug, 3);
+            OLED_ShowNum(4, 13,vision_state, 3);
         } else {
             OLED_ShowString(1, 8, "no motor");
             static uint8_t count = 0;
